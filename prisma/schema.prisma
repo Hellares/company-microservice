@@ -23,6 +23,7 @@ model Company {
   email         String    @unique
   businessTypeId Int
   active        Boolean   @default(true)
+  plan          String    @default("free")
   contactName   String?
   contactEmail  String?
   logo          String?
@@ -472,7 +473,7 @@ model CustomField {
   companyId   String
   fieldName   String
   fieldType   String    // string, number, boolean, date, etc.
-  fieldValue  String
+  fieldValue  Json
   isRequired  Boolean   @default(false)
   active      Boolean   @default(true)
   createdAt   DateTime  @default(now())

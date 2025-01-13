@@ -4,7 +4,7 @@ import { BusinessTypeService } from './business-type.service';
 import { CreateBusinessTypeDto } from './dto/create-business-type.dto';
 import { UpdateBusinessTypeDto } from './dto/update-business-type.dto';
 
-@Controller()
+@Controller('business-type')
 export class BusinessTypeController {
   constructor(private readonly businessTypeService: BusinessTypeService) {}
 
@@ -16,20 +16,5 @@ export class BusinessTypeController {
   @MessagePattern('findAllBusinessType')
   findAll() {
     return this.businessTypeService.findAll();
-  }
-
-  @MessagePattern('findOneBusinessType')
-  findOne(@Payload() id: number) {
-    return this.businessTypeService.findOne(id);
-  }
-
-  @MessagePattern('updateBusinessType')
-  update(@Payload() updateBusinessTypeDto: UpdateBusinessTypeDto) {
-    return this.businessTypeService.update(updateBusinessTypeDto.id, updateBusinessTypeDto);
-  }
-
-  @MessagePattern('removeBusinessType')
-  remove(@Payload() id: number) {
-    return this.businessTypeService.remove(id);
   }
 }
