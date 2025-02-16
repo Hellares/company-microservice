@@ -1,0 +1,42 @@
+{
+	"id": "622cfd01-09be-484e-91ff-679691bb7aa1",
+	"nombreComercial": "Wilkinson and Sons",
+	"razonSocial": "jamest",
+	"ruc": "12345678910",
+	"slug": "wilkinson-and-sons",
+	"estado": "EN_REVISION",
+	"verificada": false,
+	"rubroId": "393fa80e-903b-4b6a-9a88-ddc32dcc4ca3",
+	"logoId": null,
+	"portadaId": null,
+	"createdAt": "2025-01-17T08:02:37.563Z",
+	"updatedAt": "2025-01-17T08:02:37.563Z",
+	"rubro": {
+		"id": "393fa80e-903b-4b6a-9a88-ddc32dcc4ca3",
+		"nombre": "Computacion y Sistemas",
+		"descripcion": "Software libre",
+		"slug": "computacion-y-sistemas",
+		"icono": null,
+		"estado": true,
+		"orden": 0,
+		"createdAt": "2025-01-17T07:31:59.206Z",
+		"updatedAt": "2025-01-17T07:31:59.206Z"
+	},
+	"sedes": [
+		{
+			"id": "f60018ee-2231-4aa6-9512-cd156483b435",
+			"empresaId": "622cfd01-09be-484e-91ff-679691bb7aa1",
+			"nombre": "Sede Principal - Wilkinson and Sons",
+			"esPrincipal": true,
+			"estado": "ACTIVA",
+			"logoId": null,
+			"portadaId": null,
+			"createdAt": "2025-01-17T08:02:37.597Z",
+			"updatedAt": "2025-01-17T08:02:37.606Z",
+			"ubicacion": null,
+			"contacto": null,
+			"configuracion": null
+		}
+	],
+	"informacionLegal": null
+}

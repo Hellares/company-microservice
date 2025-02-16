@@ -1,9 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
+// This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,592 +8,264 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// prisma/schema.prisma
-
-model Company {
+// Modelo para Rubros
+model Rubro {
   id            String    @id @default(uuid())
-  tenantId      String    @unique
-  name          String
-  ruc           String    @unique
-  email         String    @unique
-  businessTypeId Int
-  active        Boolean   @default(true)
-  plan          String    @default("free")
-  contactName   String?
-  contactEmail  String?
-  logo          String?
-  address       String?
-  phone         String?
-  website       String?
+  nombre        String    @unique
+  descripcion   String
+  slug          String    @unique
+  icono         String?
+  estado        Boolean   @default(true)
+  orden         Int
+  empresas      Empresa[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relaciones
-  businessType   BusinessType       @relation(fields: [businessTypeId], references: [id])
-  customFields   CustomField[]
-  settings       Setting[]
-  services       Service[]
-  priceLists    PriceList[]
-  ratings        CompanyRating[]
-  ratingSummary  RatingSummary?
-  documents      Document[]
-  integrations   Integration[]
-  notifications  Notification[]
-  maintenanceSchedules MaintenanceSchedule[]
-  devices        Device[]
-  tags          Tag[]
-  auditLogs     AuditLog[]
-  metrics         ServiceMetric[]
-  serviceTemplates ServiceTemplate[]
-
-  @@index([tenantId])
-  @@index([active])
-  @@index([businessTypeId])
+  @@index([estado])
+  @@index([orden])
+  @@map("rubros")
 }
 
-model Integration {
-  id          String    @id @default(uuid())
-  companyId   String
-  type        String    // payment_gateway, messaging, calendar, etc.
-  provider    String    // nombre del proveedor del servicio
-  config      Json      // configuración específica de la integración
-  status      String    // active, inactive, error
-  metadata    Json?     // datos adicionales
-  lastSync    DateTime? // última sincronización
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-
-  @@index([companyId])
-  @@index([type, provider])
-}
-
-model BusinessType {
-  id            Int       @id @default(autoincrement())
-  name          String    @unique
-  description   String?
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relaciones
-  companies      Company[]
-  serviceFields  ServiceField[]
-  serviceStatus  ServiceStatus[]
-  templates      ServiceTemplate[]
-}
-
-model ServiceNote {
-  id          String    @id @default(uuid())
-  serviceId   String
-  userId      String    // ID del usuario que creó la nota
-  type        String    // internal, customer, technical
-  content     String
-  visibility  String    // private, team, customer
-  pinned      Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  service     Service   @relation(fields: [serviceId], references: [id])
-
-  @@index([serviceId])
-}
-
-model ServiceMetric {
-  id          String    @id @default(uuid())
-  companyId   String
-  serviceId   String
-  metricType  String    // duration, satisfaction, cost, efficiency, etc.
-  value       Float
-  metadata    Json?     // Datos adicionales de la métrica
-  createdAt   DateTime  @default(now())
-
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-  service     Service   @relation(fields: [serviceId], references: [id])
-
-  @@index([companyId])
-  @@index([serviceId])
-  @@index([metricType])
-}
-
-model Service {
-  id              String    @id @default(uuid())
-  companyId       String
-  statusId        Int
-  deviceId        String?
-  title           String
-  description     String?
-  fieldValues     Json      // Valores de los campos personalizados
-  internalNotes   String?
-  attachments     Json?     
-  customerSignature String?
-  estimatedPrice  Decimal?  @db.Decimal(10, 2)
-  finalPrice      Decimal?  @db.Decimal(10, 2)
-  priceListId     String?
-  currency        String    @default("PEN")
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relaciones
-  company         Company   @relation(fields: [companyId], references: [id])
-  status          ServiceStatus @relation(fields: [statusId], references: [id])
-  device          Device?   @relation(fields: [deviceId], references: [id])
-  priceList       PriceList? @relation(fields: [priceListId], references: [id])
-  statusHistory   ServiceStatusHistory[]
-  payments        ServicePayment[]
-  maintenanceSchedules MaintenanceSchedule[]
-  notes           ServiceNote[]
-  schedules       ServiceSchedule[]
-  metrics         ServiceMetric[]
-  ratings         CompanyRating[]
-  documents       Document[]
-  tags            ServiceTag[]
-  notifications   Notification[]
-
-  @@index([companyId])
-  @@index([statusId])
-  @@index([deviceId])
-  @@index([active])
-}
-
-model ServiceField {
-  id              Int       @id @default(autoincrement())
-  businessTypeId  Int
-  fieldName       String    
-  fieldLabel      String    
-  fieldType       String    // select, text, textarea, number, date, etc.
-  isRequired      Boolean   @default(false)
-  orderIndex      Int      
-  options         Json?     
-  defaultValue    String?
-  placeholder     String?
-  validations     Json?     
-  helperText      String?   
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relación
-  businessType    BusinessType @relation(fields: [businessTypeId], references: [id])
-
-  @@unique([businessTypeId, fieldName])
-  @@index([businessTypeId])
-}
-
-model ServiceStatus {
-  id              Int       @id @default(autoincrement())
-  businessTypeId  Int
-  statusName      String
-  description     String?
-  color           String?   
-  icon            String?   
-  isInitial       Boolean   @default(false)
-  isFinal         Boolean   @default(false)
-  orderIndex      Int
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relaciones
-  businessType    BusinessType @relation(fields: [businessTypeId], references: [id])
-  services        Service[]
-
-  @@unique([businessTypeId, statusName])
-  @@index([businessTypeId])
-}
-
-model ServiceStatusHistory {
-  id          String    @id @default(uuid())
-  serviceId   String
-  statusId    Int
-  notes       String?
-  createdAt   DateTime  @default(now())
-
-  // Relaciones
-  service     Service   @relation(fields: [serviceId], references: [id])
-
-  @@index([serviceId])
-}
-
-model PriceList {
-  id          String    @id @default(uuid())
-  companyId   String
-  name        String    // Lista de precios por defecto, técnicos, mayoristas, etc.
-  description String?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-  services    Service[]
-  prices      ServicePrice[]
-
-  @@unique([companyId, name])
-}
-
-model ServicePrice {
-  id          String    @id @default(uuid())
-  priceListId String
-  serviceTemplateId String
-  basePrice   Decimal   @db.Decimal(10, 2)
-  discount    Decimal?  @db.Decimal(10, 2)
-  tax         Decimal?  @db.Decimal(10, 2)
-  finalPrice  Decimal   @db.Decimal(10, 2)
-  currency    String    @default("PEN")
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  priceList   PriceList @relation(fields: [priceListId], references: [id])
-  serviceTemplate ServiceTemplate @relation(fields: [serviceTemplateId], references: [id])
-}
-
-model ServicePayment {
-  id          String    @id @default(uuid())
-  serviceId   String
-  amount      Decimal   @db.Decimal(10, 2)
-  type        String    // advance, partial, final
-  paymentMethod String  // cash, card, transfer
-  status      String    // pending, completed, cancelled
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  service     Service   @relation(fields: [serviceId], references: [id])
-
-  @@index([serviceId])
-}
-
-model ServiceTemplate {
-  id              String    @id @default(uuid())
-  companyId       String
-  businessTypeId  Int
-  name            String
-  description     String?
-  defaultFields   Json      // Valores predeterminados para campos
-  defaultStatus   Int       // Estado inicial predeterminado
-  estimatedTime   Int?      // Tiempo estimado en minutos
-  pricing         Json?     // Estructura de precios
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relaciones
-  company         Company     @relation(fields: [companyId], references: [id])
-  businessType    BusinessType @relation(fields: [businessTypeId], references: [id])
-  prices          ServicePrice[]
-
-  @@index([companyId])
-  @@index([businessTypeId])
-}
-
-model MaintenanceSchedule {
-  id              String    @id @default(uuid())
-  serviceId       String    // Servicio original
-  companyId       String
-  deviceId        String?   // ID del equipo/vehículo
-  deviceType      String    // Tipo de equipo/vehículo
-  nextMaintenanceDate DateTime
-  frequency       Int       // Frecuencia en días
-  priority        String    @default("normal") // high, normal, low
-  status          String    @default("pending") // pending, notified, scheduled, completed
-  description     String?
-  recommendations String?
-  notificationSent Boolean  @default(false)
-  lastNotificationDate DateTime?
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relaciones
-  company         Company   @relation(fields: [companyId], references: [id])
-  service         Service   @relation(fields: [serviceId], references: [id])
-  device          Device?   @relation(fields: [deviceId], references: [id])
-  notifications   MaintenanceNotification[]
-
-  @@index([companyId])
-  @@index([nextMaintenanceDate])
-  @@index([status])
-}
-
-model MaintenanceNotification {
-  id                    String    @id @default(uuid())
-  maintenanceScheduleId String
-  type                  String    // email, sms, system
-  status               String    // pending, sent, failed
-  sentAt               DateTime?
-  content              String
-  createdAt            DateTime  @default(now())
-
-  // Relaciones
-  maintenanceSchedule   MaintenanceSchedule @relation(fields: [maintenanceScheduleId], references: [id])
-
-  @@index([maintenanceScheduleId])
-}
-
-model Device {
-  id              String    @id @default(uuid())
-  companyId       String
-  clientId        String
-  type            String    // computer, car, printer, etc.
-  brand           String
-  model           String?
-  serialNumber    String?
-  metadata        Json?     // Características específicas del dispositivo
-  purchaseDate    DateTime?
-  warrantyEndDate DateTime?
-  active          Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relaciones
-  company         Company   @relation(fields: [companyId], references: [id])
-  services        Service[]
-  maintenanceSchedules MaintenanceSchedule[]
-  documents       Document[]   // Manuales, garantías, etc.
-
-  @@index([companyId])
-  @@index([clientId])
-  @@index([type])
-}
-
-model ServiceSchedule {
-  id          String    @id @default(uuid())
-  serviceId   String
-  startTime   DateTime
-  endTime     DateTime
-  type        String    // appointment, followup, maintenance
-  status      String    // scheduled, completed, cancelled
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  service     Service   @relation(fields: [serviceId], references: [id])
-
-  @@index([serviceId])
-  @@index([startTime])
-}
-
-model CompanyRating {
-  id          String    @id @default(uuid())
-  companyId   String
-  clientId    String    
-  serviceId   String?   
-  rating      Int       // 1-5 estrellas
-  review      String?   
-  title       String?   
-  isVerified  Boolean   @default(false)
-  status      String    @default("pending") // pending, approved, rejected
-  likes       Int       @default(0)
-  isPublic    Boolean   @default(true)
-  metadata    Json?     
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-  service     Service?  @relation(fields: [serviceId], references: [id])
-  response    CompanyRatingResponse?
-  aspects     RatingAspect[]
-  photos      RatingPhoto[]
-
-  @@index([companyId])
-  @@index([clientId])
-  @@index([serviceId])
-  @@index([rating])
-}
-
-model RatingAspect {
-  id              String    @id @default(uuid())
-  companyRatingId String
-  aspect          String    // Atención, Calidad, Precio, etc.
-  rating          Int       // 1-5 estrellas
-  createdAt       DateTime  @default(now())
-
-  // Relaciones
-  companyRating   CompanyRating @relation(fields: [companyRatingId], references: [id])
-
-  @@index([companyRatingId])
-}
-
-model RatingPhoto {
-  id              String    @id @default(uuid())
-  companyRatingId String
-  url             String
-  description     String?
-  createdAt       DateTime  @default(now())
-
-  // Relaciones
-  companyRating   CompanyRating @relation(fields: [companyRatingId], references: [id])
-
-  @@index([companyRatingId])
-}
-
-model CompanyRatingResponse {
-  id              String    @id @default(uuid())
-  companyRatingId String    @unique
-  response        String
-  respondedBy     String    // ID del usuario que respondió
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  // Relaciones
-  companyRating   CompanyRating @relation(fields: [companyRatingId], references: [id])
-}
-
-model RatingSummary {
+// Modelo para Planes
+model Plan {
   id                String    @id @default(uuid())
-  companyId         String    @unique
-  avgRating         Float     
-  totalRatings      Int       
-  ratingDistribution Json     // {1: 10, 2: 20, 3: 30, 4: 40, 5: 50}
-  aspectAverages    Json     // {"atención": 4.5, "calidad": 4.2, ...}
-  lastUpdated       DateTime  @default(now())
+  nombre            String    @unique
+  descripcion       String
+  precio            Decimal   @db.Decimal(10,2)
+  duracionDias      Int
+  nivelPlan         NivelPlan
+  caracteristicas   Json
+  limites           Json
+  estado            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  empresasPlanes    EmpresaPlan[]
 
-  // Relaciones
-  company           Company   @relation(fields: [companyId], references: [id])
+  @@index([estado])
+  @@index([nivelPlan])
+  @@map("planes")
 }
 
-model CustomField {
-  id          String    @id @default(uuid())
-  companyId   String
-  fieldName   String
-  fieldType   String    // string, number, boolean, date, etc.
-  fieldValue  Json
-  isRequired  Boolean   @default(false)
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+// Registro de planes por empresa
+model EmpresaPlan {
+  id              String    @id @default(uuid())
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  empresaId       String
+  plan            Plan      @relation(fields: [planId], references: [id])
+  planId          String
+  fechaInicio     DateTime  @default(now())
+  fechaFin        DateTime?
+  estado          EstadoPlan @default(ACTIVO)
+  montoPagado     Decimal   @db.Decimal(10,2)
+  metodoPago      String?
+  comprobantePago String?   // ID de la imagen en el microservicio de imágenes
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  // Relación
-  company     Company   @relation(fields: [companyId], references: [id])
-
-  @@unique([companyId, fieldName])
-  @@index([companyId])
+  @@index([empresaId])
+  @@index([estado])
+  @@map("empresas_planes")
 }
 
-model Setting {
+// Empresa principal
+model Empresa {
+  id                String    @id @default(uuid())
+  nombreComercial   String
+  razonSocial       String
+  ruc               String    @unique
+  slug              String    @unique
+  estado            EstadoEmpresa @default(EN_REVISION)
+  verificada        Boolean   @default(false)
+  rubro            Rubro     @relation(fields: [rubroId], references: [id])
+  rubroId          String
+  informacionLegal InformacionLegal?
+  sedes            Sede[]
+  planesHistorial  EmpresaPlan[]
+  logoId           String?    // ID de la imagen en el microservicio de imágenes
+  portadaId        String?    // ID de la imagen en el microservicio de imágenes
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([estado])
+  @@index([verificada])
+  @@index([rubroId])
+  @@index([razonSocial])
+  @@index([nombreComercial])
+  @@map("empresas")
+}
+
+// Modelo para Sedes
+model Sede {
+  id              String    @id @default(uuid())
+  empresa         Empresa   @relation(fields: [empresaId], references: [id])
+  empresaId       String
+  nombre          String
+  esPrincipal     Boolean   @default(false)
+  estado          EstadoSede @default(ACTIVA)
+  logoId          String?    // ID de la imagen en el microservicio de imágenes
+  portadaId       String?    // ID de la imagen en el microservicio de imágenes
+  ubicacion       Ubicacion?
+  contacto        ContactoSede?
+  configuracion   ConfiguracionSede?
+  horarios        HorarioSede[]
+  zonaCobertura   ZonaCobertura[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([empresaId])
+  @@index([estado])
+  @@index([esPrincipal])
+  @@map("sedes")
+}
+
+// Ubicación de la Sede
+model Ubicacion {
+  id              String   @id @default(uuid())
+  sede            Sede     @relation(fields: [sedeId], references: [id])
+  sedeId          String   @unique
+  direccion       String
+  numeroExterior  String?
+  numeroInterior  String?
+  referencia      String?
+  codigoPostal    String
+  distrito        String
+  provincia       String
+  departamento    String
+  pais            String   @default("Perú")
+  latitud         Float
+  longitud        Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([distrito, provincia, departamento])
+  @@index([latitud, longitud])
+  @@map("ubicaciones")
+}
+
+// Información de Contacto de Sede
+model ContactoSede {
+  id                String   @id @default(uuid())
+  sede              Sede     @relation(fields: [sedeId], references: [id])
+  sedeId            String   @unique
+  telefonoPrincipal String
+  telefonoSecundario String?
+  emailPrincipal    String
+  emailSecundario   String?
+  whatsapp          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([telefonoPrincipal])
+  @@index([emailPrincipal])
+  @@map("contactos_sede")
+}
+
+// Configuración de la Sede
+model ConfiguracionSede {
+  id              String   @id @default(uuid())
+  sede            Sede     @relation(fields: [sedeId], references: [id])
+  sedeId          String   @unique
+  colorPrimario   String?
+  colorSecundario String?
+  horaApertura    String?  // Formato HH:mm
+  horaCierre      String?  // Formato HH:mm
+  diasOperacion   String[] // Array de días de la semana
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("configuraciones_sede")
+}
+
+// Horarios de la Sede
+model HorarioSede {
   id            String    @id @default(uuid())
-  companyId     String
-  settingName   String
-  settingValue  String
-  description   String?
-  category      String?   // theme, notifications, workflow, etc.
-  active        Boolean   @default(true)
+  sede          Sede      @relation(fields: [sedeId], references: [id])
+  sedeId        String
+  diaSemana     DiaSemana
+  horaApertura  String    // Formato HH:mm
+  horaCierre    String    // Formato HH:mm
+  cerrado       Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relación
-  company       Company   @relation(fields: [companyId], references: [id])
-
-  @@unique([companyId, settingName])
-  @@index([companyId])
+  @@unique([sedeId, diaSemana])
+  @@index([sedeId])
+  @@map("horarios_sede")
 }
 
-model Tag {
-  id          String    @id @default(uuid())
-  companyId   String
-  name        String
-  color       String?
-  description String?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+// Zonas de Cobertura
+model ZonaCobertura {
+  id            String    @id @default(uuid())
+  sede          Sede      @relation(fields: [sedeId], references: [id])
+  sedeId        String
+  nombre        String
+  descripcion   String?
+  radio         Float     // Radio en kilómetros
+  centroLatitud Float
+  centroLongitud Float
+  poligono      Json?     // Array de coordenadas para zonas no circulares
+  activo        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-  services    ServiceTag[]
-
-  @@unique([companyId, name])
+  @@index([sedeId])
+  @@index([activo])
+  @@index([centroLatitud, centroLongitud])
+  @@map("zonas_cobertura")
 }
 
-model ServiceTag {
-  id          String    @id @default(uuid())
-  serviceId   String
-  tagId       String
-  createdAt   DateTime  @default(now())
+// Información Legal
+model InformacionLegal {
+  id                    String   @id @default(uuid())
+  empresa               Empresa  @relation(fields: [empresaId], references: [id])
+  empresaId             String   @unique
+  regimenTributario     String
+  tipoContribuyente     String
+  fechaInicioActividades DateTime
+  domicilioFiscal       String
+  representanteLegal    String
+  dniRepresentante      String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  // Relaciones
-  service     Service   @relation(fields: [serviceId], references: [id])
-  tag         Tag       @relation(fields: [tagId], references: [id])
-
-  @@unique([serviceId, tagId])
+  @@map("informacion_legal")
 }
 
-model Document {
-  id          String    @id @default(uuid())
-  companyId   String
-  serviceId   String?
-  deviceId    String?
-  type        String    // invoice, report, image, signature, manual, warranty
-  name        String
-  path        String
-  mimeType    String
-  size        Int
-  metadata    Json?
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-  service     Service?  @relation(fields: [serviceId], references: [id])
-  device      Device?   @relation(fields: [deviceId], references: [id])
-
-  @@index([companyId])
-  @@index([serviceId])
-  @@index([deviceId])
+enum NivelPlan {
+  BASICO
+  ESTANDAR
+  PREMIUM
+  ENTERPRISE
 }
 
-model AuditLog {
-  id          String    @id @default(uuid())
-  companyId   String
-  userId      String    
-  entityType  String    // Company, Service, Device, etc.
-  entityId    String    
-  action      String    // CREATE, UPDATE, DELETE, STATUS_CHANGE
-  oldValues   Json?     
-  newValues   Json?     
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime  @default(now())
-
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-
-  @@index([companyId])
-  @@index([entityType, entityId])
-  @@index([createdAt])
+enum EstadoPlan {
+  PENDIENTE
+  ACTIVO
+  VENCIDO
+  CANCELADO
 }
 
-model Notification {
-  id          String    @id @default(uuid())
-  companyId   String
-  serviceId   String?
-  type        String    // service_status, maintenance, reminder, alert
-  title       String
-  content     String
-  priority    String    // low, medium, high
-  status      String    // pending, sent, read
-  metadata    Json?
-  createdAt   DateTime  @default(now())
-  sentAt      DateTime?
-  readAt      DateTime?
+enum EstadoEmpresa {
+  EN_REVISION
+  ACTIVA
+  SUSPENDIDA
+  INACTIVA
+  BLOQUEADA
+}
 
-  // Relaciones
-  company     Company   @relation(fields: [companyId], references: [id])
-  service     Service?  @relation(fields: [serviceId], references: [id])
+enum EstadoSede {
+  ACTIVA
+  INACTIVA
+  EN_MANTENIMIENTO
+  CERRADA_TEMPORALMENTE
+}
 
-  @@index([companyId])
-  @@index([serviceId])
-  @@index([status])
+enum DiaSemana {
+  LUNES
+  MARTES
+  MIERCOLES
+  JUEVES
+  VIERNES
+  SABADO
+  DOMINGO
 }

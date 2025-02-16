@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
-import { CompaniesModule } from './companies/companies.module';
-import { BusinessTypeModule } from './business-type/business-type.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { CustomFieldsModule } from './companies/custom-fields/custom-fields.module';
+import { EmpresaModule } from './empresa/empresa.module';
+import { RubroModule } from './rubro/rubro.module';
+import { PlanModule } from './plan/plan.module';
 
 @Module({
   imports: [
     PrismaModule,
-    CompaniesModule, 
-    BusinessTypeModule,
-    CustomFieldsModule,
+    EmpresaModule,
+    RubroModule,
+    PlanModule,
   ],
   controllers: [],
   providers: [],
