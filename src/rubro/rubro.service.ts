@@ -4,8 +4,6 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRubroDto } from './dto/create-rubro.dto';
 import { RpcException } from '@nestjs/microservices';
 import { PaginationDto } from 'src/common';
-import { BusinessError, DuplicateEntityError } from 'src/common/exceptions/business-errors';
-import { todo } from 'node:test';
 
 @Injectable()
 export class RubroService {
@@ -23,6 +21,7 @@ export class RubroService {
 
   
   async create (createRubroDto: CreateRubroDto){
+    
     try {
       const slug = createRubroDto.slug || this.generateSlug(createRubroDto.nombre);
 
@@ -59,9 +58,11 @@ export class RubroService {
         
       }
       
+      const { tenantId, provider, empresaId, ...data } = createRubroDto; // Desestructurar el dto para omitir las propiedades no necesarias para la creación del rubro
+      
       return await this.prisma.rubro.create({
         data: {
-          ...createRubroDto,
+          ...data,
           slug,
         },
       });

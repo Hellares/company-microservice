@@ -1,5 +1,6 @@
+import { CategoriaArchivo } from "@prisma/client";
 import { Type } from "class-transformer";
-import { IsOptional, IsPositive } from "class-validator";
+import { IsEnum, IsOptional, IsPositive } from "class-validator";
 
 export class PaginationDto {
     
@@ -13,4 +14,14 @@ export class PaginationDto {
   @Type(() => Number)
   limit?: number = 10;
 
+}
+
+export class ArchivosByEmpresaDto extends PaginationDto {
+ 
+  @IsOptional()
+  @IsEnum(CategoriaArchivo)
+  categoria?: CategoriaArchivo;
+
+  @IsOptional()
+  provider?: string;
 }

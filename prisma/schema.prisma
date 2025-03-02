@@ -86,6 +86,8 @@ model Empresa {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  archivos      Archivo[]
+
   @@index([estado])
   @@index([verificada])
   @@index([rubroId])
@@ -268,4 +270,42 @@ enum DiaSemana {
   VIERNES
   SABADO
   DOMINGO
+}
+
+
+enum CategoriaArchivo {
+  LOGO
+  PORTADA
+  SERVICIO
+  PRODUCTO
+  GALERIA
+  TESTIMONIO
+  PUBLICIDAD
+  DOCUMENTO
+  VIDEO
+  OTRO
+}
+model Archivo {
+  id            String          @id @default(uuid())
+  nombre        String          // Nombre original del archivo
+  filename      String          // Nombre en el storage (incluye timestamp)
+  ruta          String          // Ruta completa en el storage (incluye tenant)
+  tipo          String          // Mimetype (image/jpeg, etc.)
+  tamanho       Int             // Tamaño en bytes
+  empresaId     String          // RUC de la empresa (tenant)
+  categoria     CategoriaArchivo // Tipo de imagen
+  entidadId     String?         // ID de la entidad relacionada
+  tipoEntidad   String?         // Nombre de la entidad (servicio, producto, etc.)
+  descripcion   String?         // Descripción opcional
+  orden         Int?            // Para ordenar imágenes de galería
+  esPublico     Boolean         @default(true) // Si es accesible públicamente
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relaciones
+  empresa       Empresa         @relation(fields: [empresaId], references: [id])
+
+  @@index([empresaId, categoria])
+  @@index([entidadId, tipoEntidad])
+  @@map("archivos")
 }
