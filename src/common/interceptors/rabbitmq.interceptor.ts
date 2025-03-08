@@ -1,12 +1,18 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { RmqContext, RpcException } from '@nestjs/microservices';
-import { CONSOLE_COLORS } from '../constants/colors.constants';
+import { RmqContext } from '@nestjs/microservices';
+import { PinoLogger } from 'nestjs-pino';
+import { ErrorClassifier } from '../utils/error-classifier';
+
+
 
 @Injectable()
 export class RabbitMQInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('RabbitMQInterceptor');
+  constructor(private readonly logger: PinoLogger) {
+    this.logger.setContext('RabbitMQInterceptor');
+  }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const rmqContext = context.switchToRpc().getContext<RmqContext>();
@@ -19,49 +25,53 @@ export class RabbitMQInterceptor implements NestInterceptor {
         next: (result) => {
           try {
             channel.ack(originalMsg);
-            this.logger.log(`${CONSOLE_COLORS.TEXT.GREEN}Mensaje procesado correctamente: ${pattern}`);
+            // Opcional: reducir logs de éxito en producción
+            if (process.env.NODE_ENV !== 'production') {
+              this.logger.debug({ pattern }, 'Mensaje procesado correctamente');
+            }
           } catch (err) {
-            // Ignorar errores de canal cerrado durante el shutdown
             if (err.message !== 'Channel closed') {
-              this.logger.error(`Error al confirmar mensaje: ${err.message}`);
+              this.logger.error({ err, pattern }, 'Error al confirmar mensaje');
             }
           }
         },
         error: (error) => {
           try {
-            // Verificar si es un error de negocio
-            const isBusinessError = 
-              error instanceof RpcException || 
-              error?.response?.code || 
-              error?.status === 400 ||
-              error.message.includes('Ya existe');
+            const isBusinessError = ErrorClassifier.isBusinessError(error);
 
             if (isBusinessError) {
-              this.logger.warn(
-                `${CONSOLE_COLORS.TEXT.YELLOW}Error de negocio en ${pattern}: ${error.message}`
-              );
+              this.logger.warn({ 
+                pattern, 
+                errorMessage: error.message,
+                errorType: 'business' 
+              }, 'Error de negocio');
+              
               channel.ack(originalMsg);
             } else {
-              // Solo reintentar errores técnicos genuinos
               const retryCount = this.getRetryCount(originalMsg);
               if (retryCount < 3) {
-                this.logger.warn(
-                  `${CONSOLE_COLORS.TEXT.YELLOW}Reintentando mensaje ${pattern}. Intento ${retryCount + 1}/3`
-                );
+                this.logger.warn({ 
+                  pattern, 
+                  retryCount: retryCount + 1,
+                  maxRetries: 3 
+                }, 'Reintentando mensaje');
+                
                 this.incrementRetryCount(originalMsg);
                 channel.nack(originalMsg, false, true);
               } else {
-                this.logger.error(
-                  `${CONSOLE_COLORS.TEXT.RED}Mensaje fallido después de 3 intentos: ${pattern}`,
-                  error.stack
-                );
+                this.logger.error({ 
+                  err: error,
+                  pattern,
+                  retryCount,
+                  stack: error.stack 
+                }, 'Mensaje fallido después de 3 intentos');
+                
                 channel.ack(originalMsg);
               }
             }
           } catch (err) {
-            // Ignorar errores de canal cerrado durante el shutdown
             if (err.message !== 'Channel closed') {
-              this.logger.error(`Error al manejar mensaje: ${err.message}`);
+              this.logger.error({ err, pattern }, 'Error al manejar mensaje');
             }
           }
         },
@@ -69,6 +79,7 @@ export class RabbitMQInterceptor implements NestInterceptor {
     );
   }
 
+  // Métodos auxiliares
   private getRetryCount(msg: any): number {
     const headers = msg.properties.headers || {};
     return headers['x-retry-count'] || 0;

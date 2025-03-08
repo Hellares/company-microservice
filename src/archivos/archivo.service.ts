@@ -9,7 +9,7 @@ import { PaginationDto } from 'src/common';
 
 @Injectable()
 export class ArchivoService {
-  private readonly logger = new Logger(ArchivoService.name);
+  // private readonly logger = new Logger(ArchivoService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -36,10 +36,10 @@ export class ArchivoService {
         data: prismaData
       });
   
-      this.logger.debug(`Archivo creado: ${archivo.id}`);
+      // this.logger.debug(`Archivo creado: ${archivo.id}`);
       return archivo;
     } catch (error) {
-      this.logger.error('Error al crear archivo:', error);
+      // this.logger.error('Error al crear archivo:', error);
       throw new RpcException({
         message: `Error al crear archivo: ${error.message}`,
         status: 500
@@ -65,7 +65,7 @@ export class ArchivoService {
       if (error instanceof RpcException) {
         throw error;
       }
-      this.logger.error(`Error al buscar archivo ${id}:`, error);
+      // this.logger.error(`Error al buscar archivo ${id}:`, error);
       throw new RpcException({
         message: `Error al buscar archivo: ${error.message}`,
         status: 500
@@ -95,7 +95,7 @@ export class ArchivoService {
         }
       };
     } catch (error) {
-      this.logger.error(`Error al buscar archivos por entidad ${tipoEntidad}:${entidadId}:`, error);
+      // this.logger.error(`Error al buscar archivos por entidad ${tipoEntidad}:${entidadId}:`, error);
       throw new RpcException({
         message: `Error al buscar archivos: ${error.message}`,
         status: 500
@@ -183,7 +183,7 @@ export class ArchivoService {
         }
       };
     } catch (error) {
-      this.logger.error(`Error al buscar archivos por empresa ${empresaId}:`, error);
+      // this.logger.error(`Error al buscar archivos por empresa ${empresaId}:`, error);
       throw new RpcException({
         message: `Error al buscar archivos: ${error.message}`,
         status: 500
@@ -200,7 +200,7 @@ export class ArchivoService {
 
       return archivo;
     } catch (error) {
-      this.logger.error(`Error al actualizar archivo ${id}:`, error);
+      // this.logger.error(`Error al actualizar archivo ${id}:`, error);
       throw new RpcException({
         message: `Error al actualizar archivo: ${error.message}`,
         status: 500
@@ -219,7 +219,7 @@ export class ArchivoService {
         message: `Archivo ${id} eliminado correctamente`
       };
     } catch (error) {
-      this.logger.error(`Error al eliminar archivo ${id}:`, error);
+      // this.logger.error(`Error al eliminar archivo ${id}:`, error);
       throw new RpcException({
         message: `Error al eliminar archivo: ${error.message}`,
         status: 500

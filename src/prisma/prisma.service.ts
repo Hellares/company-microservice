@@ -1,13 +1,15 @@
 // src/prisma/prisma.service.ts
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { PinoLogger } from 'nestjs-pino';
 import { PrismaClient } from '@prisma/client';
-import { CONSOLE_COLORS } from '../common/constants/colors.constants';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger('PrismaService');
 
-  constructor() {
+
+  constructor(
+    private readonly logger: PinoLogger
+  ) {
     super({
       log: [
         { emit: 'event', level: 'query' },
@@ -16,6 +18,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         { emit: 'stdout', level: 'error' },
       ],
     });
+
+    // Establecer el contexto para todos los logs
+    this.logger.setContext('PrismaService');
+
 
     //Extensiones avanzadas
     this.$extends({
@@ -28,15 +34,26 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
             const result = await query(args);
             const duration = Date.now() - start;
             
-            this.logger.log(
-              `${CONSOLE_COLORS.TEXT.MAGENTA}Query ${model}.${operation} took ${duration}ms`
-            );
+            // Usar formato de objeto para mejor rendimiento
+            this.logger.debug({
+              model,
+              operation,
+              duration,
+              timestamp: new Date().toISOString()
+            }, `Query ${model}.${operation} completada`);
             
             return result;
           } catch (error) {
-            this.logger.error(
-              `${CONSOLE_COLORS.TEXT.RED}Error in ${model}.${operation}: ${error.message}`
-            );
+            // Log estructurado para errores
+            this.logger.error({
+              model,
+              operation,
+              error: {
+                message: error.message,
+                code: error.code,
+                meta: error.meta
+              }
+            }, `Error en prisma ${model}.${operation}`);
             throw error;
           }
         },
@@ -58,11 +75,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     await this.$connect();
-    this.logger.log(`${CONSOLE_COLORS.TEXT.CYAN}Database connection established`);
+    this.logger.info('Conexion a base de datos establecida');
   }
 
   async onModuleDestroy() {
-    this.logger.log(`${CONSOLE_COLORS.TEXT.YELLOW}Closing database connection`);
+    this.logger.info('Cerrando conexión a base de datos');
     await this.$disconnect();
   }
 }

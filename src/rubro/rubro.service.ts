@@ -1,4 +1,4 @@
-import { ConflictException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import slugify from 'slugify';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRubroDto } from './dto/create-rubro.dto';

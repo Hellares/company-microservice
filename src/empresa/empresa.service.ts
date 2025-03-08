@@ -7,7 +7,7 @@ import { EstadoPlan, Prisma } from '@prisma/client';
 
 @Injectable()
 export class EmpresaService {
-  private readonly logger = new Logger('EmpresaService');
+  // private readonly logger = new Logger('EmpresaService');
   constructor(
     private readonly prisma: PrismaService,
   ) {}
@@ -88,11 +88,11 @@ export class EmpresaService {
         normalizedRuc
       };
     } catch (error) {
-      this.logger.error('Error en validación de restricciones:', {
-        error: error.message,
-        dto: { ...dto, rubroId: dto.rubroId },
-        timestamp: new Date().toISOString()
-      });
+      // this.logger.error('Error en validación de restricciones:', {
+      //   error: error.message,
+      //   dto: { ...dto, rubroId: dto.rubroId },
+      //   timestamp: new Date().toISOString()
+      // });
       throw error;
     }
   }
@@ -198,11 +198,11 @@ export class EmpresaService {
         }
       });
     } catch (error) {
-      this.logger.error('Error al crear empresa y sede:', {
-        error: error.message,
-        dto: { ...dto, rubroId: dto.rubroId },
-        timestamp: new Date().toISOString()
-      });
+      // this.logger.error('Error al crear empresa y sede:', {
+      //   error: error.message,
+      //   dto: { ...dto, rubroId: dto.rubroId },
+      //   timestamp: new Date().toISOString()
+      // });
       
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         throw new RpcException({
@@ -225,10 +225,10 @@ export class EmpresaService {
   async create(createEmpresaDto: CreateEmpresaDto) {
     try {
       const result = await this.prisma.$transaction(async (tx) => {
-        this.logger.log('Iniciando proceso de creación de empresa...', {
-          nombreComercial: createEmpresaDto.nombreComercial,
-          ruc: createEmpresaDto.ruc
-        });
+        // this.logger.log('Iniciando proceso de creación de empresa...', {
+        //   nombreComercial: createEmpresaDto.nombreComercial,
+        //   ruc: createEmpresaDto.ruc
+        // });
 
         // Validar restricciones de negocio
         const { slug, normalizedRuc } = await this.validateBusinessConstraints(tx, createEmpresaDto);
@@ -236,11 +236,11 @@ export class EmpresaService {
         // Crear empresa y sede
         const empresa = await this.createEmpresaWithSede(tx, createEmpresaDto, slug, normalizedRuc);
 
-        this.logger.log('Empresa y sede principal creadas exitosamente', {
-          empresaId: empresa.id,
-          nombreComercial: empresa.nombreComercial,
-          sedeId: empresa.sedes[0]?.id
-        });
+        // this.logger.log('Empresa y sede principal creadas exitosamente', {
+        //   empresaId: empresa.id,
+        //   nombreComercial: empresa.nombreComercial,
+        //   sedeId: empresa.sedes[0]?.id
+        // });
 
         return {
           data: empresa,
@@ -255,11 +255,11 @@ export class EmpresaService {
       return result;
 
     } catch (error) {
-      this.logger.error('Error en el proceso de creación de empresa:', {
-        error: error.message,
-        dto: { ...createEmpresaDto, rubroId: createEmpresaDto.rubroId },
-        timestamp: new Date().toISOString()
-      });
+      // this.logger.error('Error en el proceso de creación de empresa:', {
+      //   error: error.message,
+      //   dto: { ...createEmpresaDto, rubroId: createEmpresaDto.rubroId },
+      //   timestamp: new Date().toISOString()
+      // });
 
       if (error instanceof RpcException) {
         throw error;
