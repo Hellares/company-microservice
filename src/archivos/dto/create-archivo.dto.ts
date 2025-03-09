@@ -44,4 +44,8 @@ export class CreateArchivoDto {
   @IsBoolean()
   @IsOptional()
   esPublico?: boolean;
+
+  @IsString()
+  @IsOptional()
+  provider?: string;
 }

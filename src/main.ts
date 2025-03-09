@@ -41,7 +41,13 @@ class AppBootstrap {
         options: {
           urls: envs.rabbitmqServers,
           queue: 'company_queue',
-          queueOptions: { durable: true },
+          queueOptions: { 
+            durable: true,
+            arguments: {
+              'x-message-ttl': 300000, // 5 minutos
+              'x-expires': 600000      // 10 minutos
+            }
+           },
           noAck: false,
           prefetchCount:1
         },

@@ -299,6 +299,7 @@ model Archivo {
   descripcion   String?         // Descripción opcional
   orden         Int?            // Para ordenar imágenes de galería
   esPublico     Boolean         @default(true) // Si es accesible públicamente
+  provider      String?         //Proveedor de almacenamiento (firebase, cloudinary, s3, local)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
@@ -307,5 +308,6 @@ model Archivo {
 
   @@index([empresaId, categoria])
   @@index([entidadId, tipoEntidad])
+  @@index([provider]) // Nuevo índice para el campo provider
   @@map("archivos")
 }

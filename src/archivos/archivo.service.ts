@@ -29,7 +29,8 @@ export class ArchivoService {
         tipoEntidad: createArchivoDto.tipoEntidad,
         descripcion: createArchivoDto.descripcion,
         orden: createArchivoDto.orden,
-        esPublico: createArchivoDto.esPublico ?? true
+        esPublico: createArchivoDto.esPublico ?? true,
+        provider: createArchivoDto.provider ?? 'firebase'
       };
   
       const archivo = await this.prisma.archivo.create({

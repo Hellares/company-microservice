@@ -136,65 +136,7 @@ export class RubroService {
     
   }
 
-  // async findAll(paginationDto: PaginationDto) {
-  //   try {
-
-  //     const { page, limit } = paginationDto;
-      
-  //     const [items, rubros] = await Promise.all([
-  //       this.prisma.rubro.count({
-  //         where: { estado: true },
-  //       }),
-  //       this.prisma.rubro.findMany({
-  //         where: { estado: true },
-  //         orderBy: { orden: 'desc' },
-  //         include: {
-  //           empresas: {
-  //             select: {
-  //               razonSocial: true,                
-  //             }
-  //           }
-  //         },
-  //         take: limit,
-  //         skip: limit * (page - 1)
-  //       })
-  //     ]);
-
-  //     const totalPages = Math.ceil(items / limit);
-
-  //     if(!rubros.length && page > 1 && items > 0) {
-  //       throw new RpcException({
-  //         message: 'No se encontraron registros',
-  //         status: HttpStatus.NOT_FOUND,
-  //       });
-  //     }
-
-  //     return {
-  //       data: rubros,
-  //       metadata:{
-  //         total: items,
-  //         page,
-  //         totalPages,
-  //         hasNextPage: page < totalPages,
-  //         hasPreviousPage: page > 1,
-  //         // success: true
-  //       }
-  //     };
-      
-  //   } catch (error) {
-  //     if (error instanceof RpcException) {
-  //       throw error;
-  //     }
-  //     //this.logger.error(`Error al obtener empresas: ${error.message}`);
-  //     throw new RpcException({
-  //       message: 'Error al obtener el listado de rubros',
-  //       status: 500,
-  //       // success: false
-  //     });
-  //   }
-    
-  // }
-
+  
   async findAll(paginationDto: PaginationDto) {
     try {
       const { page, limit } = paginationDto;
