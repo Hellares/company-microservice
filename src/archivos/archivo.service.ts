@@ -1,17 +1,23 @@
 // src/archivos/archivo.service.ts
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateArchivoDto } from './dto/create-archivo.dto';
 import { CategoriaArchivo } from '@prisma/client';
 import { RpcException } from '@nestjs/microservices';
 import { ArchivoCreateData } from './interfaces/archivo-prisma.interface';
 import { PaginationDto } from 'src/common';
+import { PinoLogger } from 'nestjs-pino';
 
 @Injectable()
 export class ArchivoService {
-  // private readonly logger = new Logger(ArchivoService.name);
+ 
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext('ArchivoService');
+  }
 
   async create(createArchivoDto: CreateArchivoDto) {
     try {
@@ -30,14 +36,14 @@ export class ArchivoService {
         descripcion: createArchivoDto.descripcion,
         orden: createArchivoDto.orden,
         esPublico: createArchivoDto.esPublico ?? true,
-        provider: createArchivoDto.provider ?? 'firebase'
+        provider: createArchivoDto.provider
       };
   
       const archivo = await this.prisma.archivo.create({
         data: prismaData
       });
   
-      // this.logger.debug(`Archivo creado: ${archivo.id}`);
+      this.logger.info(`Archivo creado: ${archivo.id}`);
       return archivo;
     } catch (error) {
       // this.logger.error('Error al crear archivo:', error);
