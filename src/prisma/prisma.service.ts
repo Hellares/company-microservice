@@ -9,6 +9,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor(
     private readonly logger: PinoLogger
+    
   ) {
     super({
       log: [
@@ -17,6 +18,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         { emit: 'stdout', level: 'warn' },
         { emit: 'stdout', level: 'error' },
       ],
+      // configuración para mejorar la gestión de conexiones
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+      errorFormat: 'pretty',
     });
 
     // Establecer el contexto para todos los logs

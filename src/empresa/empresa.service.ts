@@ -4,6 +4,7 @@ import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import slugify from 'slugify';
 import { RpcException } from '@nestjs/microservices';
 import { EstadoPlan, Prisma } from '@prisma/client';
+import { PinoLogger } from 'nestjs-pino';
 
 @Injectable()
 export class EmpresaService {
@@ -271,6 +272,148 @@ export class EmpresaService {
         code: 'UNEXPECTED_ERROR',
         detail: error.message
       });
+    }
+  }
+
+
+  // async getActivePlan(empresaId: string) {
+  //   try {
+  //     const empresaPlan = await this.prisma.empresaPlan.findFirst({
+  //       where: {
+  //         empresaId: empresaId,
+  //         estado: 'ACTIVO',
+  //       },
+  //       include: {
+  //         plan: true,
+  //       },
+  //     });
+  
+  //     if (!empresaPlan) {
+  //       throw new RpcException('No se encontró un plan activo para esta empresa');
+  //     }
+  
+  //     return empresaPlan;
+  //   } catch (error) {
+  //     if (error instanceof RpcException) {
+  //       throw error;
+  //     }
+  //     throw new RpcException(`Error al obtener plan activo: ${error.message}`);
+  //   }
+  // }
+
+
+  async getPlan(empresaId: string) {
+    try {
+
+      // Buscar todos los planes de la empresa ordenados por fecha de creación (más reciente primero)
+      const empresaPlanes = await this.prisma.empresaPlan.findMany({
+        where: {
+          empresaId: empresaId,
+        },
+        include: {
+          plan: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 5, // Obtener los 5 planes más recientes para análisis
+      });
+
+  
+      // Si no hay planes, buscar un plan BASICO predeterminado
+      if (empresaPlanes.length === 0) {
+        const planBasico = await this.prisma.plan.findFirst({
+          where: {
+            nivelPlan: 'BASICO',
+            estado: true,
+          },
+        });
+  
+        if (planBasico) {
+          // Retornar información detallada con un plan virtual
+          return {
+            empresaPlan: {
+              empresa: { id: empresaId },
+              empresaId: empresaId,
+              plan: planBasico,
+              planId: planBasico.id,
+              estado: 'PENDIENTE', // Usamos PENDIENTE como estado para el plan virtual
+              fechaInicio: new Date(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            status: 'SIN_PLAN',
+            isDefault: true,
+            canUploadFiles: false, // No permitir subida de archivos sin un plan real
+            limiteAlmacenamiento: planBasico.limites || 1, // Valor predeterminado
+            message: 'La empresa no tiene un plan asignado. Se está utilizando un plan básico virtual.'
+          };
+        }
+  
+        // Si no hay plan básico predeterminado
+        throw new RpcException('No se encontró ningún plan para esta empresa');
+      }
+  
+      // El plan más reciente (independientemente de su estado)
+      const planReciente = empresaPlanes[0];
+      
+      // Analizar estado del plan y definir permisos
+      let canUploadFiles = false;
+      let status = '';
+      let message = '';
+      
+      switch (planReciente.estado) {
+        case 'ACTIVO':
+          canUploadFiles = true;
+          status = 'ACTIVO';
+          message = 'Plan activo';
+          break;
+        case 'PENDIENTE':
+          canUploadFiles = false;
+          status = 'PENDIENTE';
+          message = 'Plan pendiente de activación. No se pueden subir archivos hasta que se active.';
+          break;
+        case 'VENCIDO':
+          canUploadFiles = false;
+          status = 'VENCIDO';
+          message = 'Plan vencido. Es necesario renovar para poder subir archivos.';
+          break;
+        case 'CANCELADO':
+          canUploadFiles = false;
+          status = 'CANCELADO';
+          message = 'Plan cancelado. No se pueden subir archivos.';
+          break;
+        default:
+          canUploadFiles = false;
+          status = 'DESCONOCIDO';
+          message = 'Estado de plan desconocido.';
+      }
+      
+      // Buscar si hay algún plan activo (podría haber varios planes para diferentes servicios)
+      const planActivo = empresaPlanes.find(p => p.estado === 'ACTIVO');
+      
+      return {
+        empresaPlan: planActivo || planReciente, // Priorizar plan activo si existe, sino el más reciente
+        status,
+        isDefault: false,
+        canUploadFiles,
+        limiteAlmacenamiento: planReciente.plan.limites || 5,
+        message,
+        historialPlanes: empresaPlanes.map(p => ({
+          id: p.id,
+          planNombre: p.plan.nombre,
+          nivelPlan: p.plan.nivelPlan,
+          estado: p.estado,
+          fechaInicio: p.fechaInicio,
+          fechaFin: p.fechaFin
+        }))
+      };
+    } catch (error) {
+      if (error instanceof RpcException) {
+        throw error;
+      }
+      //this.logger(`Error al obtener plan de empresa: ${error.message}`);
+      throw new RpcException(`Error al obtener plan de empresa: ${error.message}`);
     }
   }
 }

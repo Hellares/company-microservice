@@ -23,7 +23,7 @@ class AppBootstrap {
       // Usar resolve() en lugar de get() para PinoLogger
       this.logger = await this.app.resolve(PinoLogger);
       // Establecer contexto
-      this.logger.setContext('APP-Main');
+      this.logger.setContext('Company-MS');
       await this.setupMiddlewares();
       this.setupErrorHandling();
       await this.startApplication();
