@@ -292,7 +292,7 @@ model Archivo {
   ruta          String          // Ruta completa en el storage (incluye tenant)
   tipo          String          // Mimetype (image/jpeg, etc.)
   tamanho       Int             // Tamaño en bytes
-  empresaId     String          // RUC de la empresa (tenant)
+  empresaId     String          // Id de la empresa (tenant)
   categoria     CategoriaArchivo // Tipo de imagen
   entidadId     String?         // ID de la entidad relacionada
   tipoEntidad   String?         // Nombre de la entidad (servicio, producto, etc.)
