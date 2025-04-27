@@ -308,6 +308,7 @@ model Archivo {
 
   @@index([empresaId, categoria])
   @@index([entidadId, tipoEntidad])
-  @@index([provider]) // Nuevo índice para el campo provider
+  @@index([provider])
+  @@index([filename])
   @@map("archivos")
 }

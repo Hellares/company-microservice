@@ -23,5 +23,5 @@ export class ArchivosByEmpresaDto extends PaginationDto {
   categoria?: CategoriaArchivo;
 
   @IsOptional()
-  provider?: string;
+  empresaId?: string;
 }

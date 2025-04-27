@@ -49,7 +49,7 @@ class AppBootstrap {
             }
            },
           noAck: false,
-          prefetchCount:1
+          prefetchCount:4
         },
         bufferLogs: true,
         logger: ['error', 'warn'],

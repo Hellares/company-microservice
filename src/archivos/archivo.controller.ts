@@ -12,13 +12,13 @@ export class ArchivoController {
 
   constructor(private readonly archivoService: ArchivoService) {}
 
-  @MessagePattern('archivo.create')
+  @MessagePattern('archivo.create') //OK IMPLEMENTADO - FILESCONTROLLER GATEWAY
   async create(@Payload() createArchivoDto: CreateArchivoDto) {
 
     return await this.archivoService.create(createArchivoDto);    
   }
 
-  @MessagePattern('archivo.findById')
+  @MessagePattern('archivo.findById') //OK IMPLEMENTADO - FILESCONTROLLER GATEWAY
   async findById(@Payload() id: string) {
     try {
       return await this.archivoService.findById(id);
@@ -31,33 +31,33 @@ export class ArchivoController {
     }
   }
 
-  @MessagePattern('archivo.findByEntidad')
-  async findByEntidad(@Payload() data: { tipoEntidad: string; entidadId: string }) {
+  @MessagePattern('archivo.findByEntidadFiltrado')//OK IMPLEMENTADO - FILESCONTROLLER GATEWAY
+  async findByEntidadFiltrado(@Payload() payload: { 
+    tipoEntidad: string; 
+    entidadId: string;
+    empresaId?: string;
+    categoria?: CategoriaArchivo;
+    paginationDto: PaginationDto;
+  }) {
     try {
-      return await this.archivoService.findByEntidad(data.tipoEntidad, data.entidadId);
+      const { tipoEntidad, entidadId, paginationDto, empresaId, categoria } = payload;
+      return await this.archivoService.findByEntidadFiltrado(
+        tipoEntidad,
+        entidadId,
+        paginationDto,
+        empresaId,
+        categoria
+      );
     } catch (error) {
-      this.logger.error(`Error en archivo.findByEntidad:`, error);
+      this.logger.error(`Error en archivo.findByEntidadFiltrado:`, error);
       throw new RpcException(error.response || {
         message: error.message,
         status: 500
       });
     }
   }
-
-  @MessagePattern('archivo.findByEmpresa')
-async findByEmpresa(@Payload() payload: { paginationDto: PaginationDto, empresaId: string, categoria?: CategoriaArchivo }) {
-  try {
-    const { paginationDto, empresaId, categoria } = payload;
-    return await this.archivoService.findByEmpresa(paginationDto, empresaId, categoria);
-  } catch (error) {
-    this.logger.error(`Error en archivo.findByEmpresa:`, error);
-    throw new RpcException(error.response || {
-      message: error.message,
-      status: 500
-    });
-  }
-}
-
+  
+  
   @MessagePattern('archivo.update')
   async update(@Payload() data: { id: string; updateData: Partial<CreateArchivoDto> }) {
     try {
@@ -82,5 +82,10 @@ async findByEmpresa(@Payload() payload: { paginationDto: PaginationDto, empresaI
         status: 500
       });
     }
+  }
+
+  @MessagePattern('archivo.deleteByFilename')
+  async deleteByFilename(@Payload() filename: string) {
+  return this.archivoService.deleteByFilename(filename);
   }
 }
