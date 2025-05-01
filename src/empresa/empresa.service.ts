@@ -1,17 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import slugify from 'slugify';
 import { RpcException } from '@nestjs/microservices';
-import { EstadoPlan, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PinoLogger } from 'nestjs-pino';
 
+
+
 @Injectable()
-export class EmpresaService {
-  // private readonly logger = new Logger('EmpresaService');
+export class EmpresaService {  
   constructor(
     private readonly prisma: PrismaService,
-  ) {}
+    private readonly logger: PinoLogger
+  ) {
+    this.logger.setContext('EmpresaService');
+  }
 
   private generateSlug(nombreComercial: string): string {
     return slugify(nombreComercial, {
@@ -100,6 +104,12 @@ export class EmpresaService {
 
   private async createEmpresaWithSede(tx: any, dto: CreateEmpresaDto, slug: string, normalizedRuc: string) {
     try {
+      this.logger.debug({
+        action: 'createEmpresaWithSede',
+        slug,
+        ruc: normalizedRuc
+      }, 'Creando empresa y sede principal...');
+
       // Crear la empresa
       const empresa = await tx.empresa.create({
         data: {
@@ -115,6 +125,11 @@ export class EmpresaService {
         },
       });
 
+      this.logger.debug({
+        empresaId: empresa.id,
+        nombreComercial: empresa.nombreComercial
+      }, 'Empresa creada correctamente');
+
        
       // Crear la sede principal
        await tx.sede.create({
@@ -126,7 +141,7 @@ export class EmpresaService {
         },
       });
 
-      // Buscar y asignar plan básico
+           // Buscar y asignar plan básico
     const planBasico = await tx.plan.findFirst({
       where: {
         nivelPlan: 'BASICO',
@@ -226,10 +241,10 @@ export class EmpresaService {
   async create(createEmpresaDto: CreateEmpresaDto) {
     try {
       const result = await this.prisma.$transaction(async (tx) => {
-        // this.logger.log('Iniciando proceso de creación de empresa...', {
-        //   nombreComercial: createEmpresaDto.nombreComercial,
-        //   ruc: createEmpresaDto.ruc
-        // });
+        this.logger.debug({
+          nombreComercial: createEmpresaDto.nombreComercial,
+          ruc: createEmpresaDto.ruc
+        }, 'Iniciando proceso de creacion de empresa');
 
         // Validar restricciones de negocio
         const { slug, normalizedRuc } = await this.validateBusinessConstraints(tx, createEmpresaDto);
@@ -237,11 +252,12 @@ export class EmpresaService {
         // Crear empresa y sede
         const empresa = await this.createEmpresaWithSede(tx, createEmpresaDto, slug, normalizedRuc);
 
-        // this.logger.log('Empresa y sede principal creadas exitosamente', {
-        //   empresaId: empresa.id,
-        //   nombreComercial: empresa.nombreComercial,
-        //   sedeId: empresa.sedes[0]?.id
-        // });
+        this.logger.debug({
+          empresaId: empresa.id,
+          nombreComercial: empresa.nombreComercial,
+          sedeId: empresa.sedes[0]?.id
+        }, 'Empresa y sede principal creadas exitosamente');
+
 
         return {
           data: empresa,
@@ -256,12 +272,7 @@ export class EmpresaService {
       return result;
 
     } catch (error) {
-      // this.logger.error('Error en el proceso de creación de empresa:', {
-      //   error: error.message,
-      //   dto: { ...createEmpresaDto, rubroId: createEmpresaDto.rubroId },
-      //   timestamp: new Date().toISOString()
-      // });
-
+      
       if (error instanceof RpcException) {
         throw error;
       }
@@ -276,34 +287,11 @@ export class EmpresaService {
   }
 
 
-  // async getActivePlan(empresaId: string) {
-  //   try {
-  //     const empresaPlan = await this.prisma.empresaPlan.findFirst({
-  //       where: {
-  //         empresaId: empresaId,
-  //         estado: 'ACTIVO',
-  //       },
-  //       include: {
-  //         plan: true,
-  //       },
-  //     });
   
-  //     if (!empresaPlan) {
-  //       throw new RpcException('No se encontró un plan activo para esta empresa');
-  //     }
-  
-  //     return empresaPlan;
-  //   } catch (error) {
-  //     if (error instanceof RpcException) {
-  //       throw error;
-  //     }
-  //     throw new RpcException(`Error al obtener plan activo: ${error.message}`);
-  //   }
-  // }
-
-
   async getPlan(empresaId: string) {
     try {
+
+      this.logger.debug({ empresaId }, 'Obteniendo plan de empresa');
 
       // Buscar todos los planes de la empresa ordenados por fecha de creación (más reciente primero)
       const empresaPlanes = await this.prisma.empresaPlan.findMany({

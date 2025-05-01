@@ -3,10 +3,10 @@ import { AppModule } from './app.module';
 import { MicroserviceOptions, RpcException, Transport } from '@nestjs/microservices';
 import { envs } from './config/envs';
 import { ValidationPipe } from '@nestjs/common';
-import { CONSOLE_COLORS } from './common/constants/colors.constants';
 import { PrismaService } from './prisma/prisma.service';
-import { tap, finalize } from 'rxjs/operators';
+import { finalize } from 'rxjs/operators';
 import { PinoLogger } from 'nestjs-pino';
+
 
 // Clase auxiliar para determinar tipos de errores
 class AppBootstrap {
@@ -23,7 +23,9 @@ class AppBootstrap {
       // Usar resolve() en lugar de get() para PinoLogger
       this.logger = await this.app.resolve(PinoLogger);
       // Establecer contexto
-      this.logger.setContext('Company-MS');
+      // this.logger.setContext('Company-MS');
+
+      
       await this.setupMiddlewares();
       this.setupErrorHandling();
       await this.startApplication();
@@ -53,7 +55,7 @@ class AppBootstrap {
         },
         bufferLogs: true,
         logger: ['error', 'warn'],
-        //logger: ['error', 'warn', 'log', 'debug'], //!no mostrar log de arranque
+        // logger: ['error', 'warn', 'log', 'debug'], //!no mostrar log de arranque
         
       }
     );
@@ -107,7 +109,7 @@ class AppBootstrap {
     
     while (this.pendingOperations > 0 && Date.now() - startTime < maxWaitTime) {
       // this.logger.log(`Esperando ${this.pendingOperations} operaciones pendientes...`);
-      this.logger.info({ pendingOps: this.pendingOperations }, `Esperando operaciones pendientes`);
+      this.logger.debug({ pendingOps: this.pendingOperations }, `Esperando operaciones pendientes`);
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     
@@ -125,7 +127,7 @@ class AppBootstrap {
 
     this.shuttingDown = true;
     // this.logger.log(`${CONSOLE_COLORS.TEXT.YELLOW}Recibida señal ${signal}, iniciando apagado graceful...`);
-    this.logger.info({ signal }, 'Iniciando apagado graceful');
+    this.logger.debug({ signal }, 'Iniciando apagado graceful');
     try {
       await this.performShutdown();
       process.exit(0);
@@ -137,10 +139,10 @@ class AppBootstrap {
   }
 
   private async performShutdown() {
-    this.logger.info('Deteniendo aceptación de nuevas conexiones...');
+    this.logger.debug('Deteniendo aceptación de nuevas conexiones...');
     await this.waitForPendingOperations();
     await this.closeConnections();
-    this.logger.info('Apagado graceful completado');
+    this.logger.debug('Apagado graceful completado');
   }
 
   private async closeConnections() {
@@ -153,9 +155,9 @@ class AppBootstrap {
   private async closeMicroservice() {
     try {
       if (this.app) {
-        this.logger.info('Cerrando el microservicio');
+        this.logger.debug('Cerrando el microservicio');
         await this.app.close();
-        this.logger.info('Microservicio cerrado correctamente');
+        this.logger.debug('Microservicio cerrado correctamente');
       }
     } catch (err) {
       this.logger.error({ err }, 'Error al cerrar el microservicio');
@@ -165,9 +167,9 @@ class AppBootstrap {
   private async closeDatabaseConnection() {
     try {
       if (this.prismaService) {
-        this.logger.info('Cerrando conexión con la base de datos');
+        this.logger.debug('Cerrando conexión con la base de datos');
         await this.prismaService.$disconnect();
-        this.logger.info('Conexión con la base de datos cerrada correctamente');
+        this.logger.debug('Conexión con la base de datos cerrada correctamente');
       }
     } catch (err) {
       this.logger.error({ err }, 'Error al cerrar la conexión de la base de datos');
@@ -211,7 +213,7 @@ class AppBootstrap {
 
   private async startApplication() {
     await this.app.listen();
-    this.logger.info(`Microservicio Company - Empresa corriendo en el puerto ${envs.port}`);
+    this.logger.debug(`Microservicio Company - Empresa corriendo en el puerto ${envs.port}`);
   }
 }
 

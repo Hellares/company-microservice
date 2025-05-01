@@ -14,26 +14,41 @@ import { StorageModule } from './storage/storage.module';
     LoggerModule.forRoot({
       pinoHttp: {
         // Nivel de log: info en producción, debug en desarrollo
-        level: process.env.NODE_ENV === 'production' ? 'debug' : 'info',
+        level: process.env.NODE_ENV === 'production' ? 'debug' : 'debug',
 
                 // Clave para el mensaje principal
         messageKey: 'message',
         
         // Desactivar el logging automático de HTTP (mejor para microservicios)
-        autoLogging: false,
+        autoLogging: true,
         
         // Solo usar pretty en desarrollo, en producción mantener formato JSON puro
-        transport: process.env.NODE_ENV !== 'production' 
-          ? {
-              target: 'pino-pretty',
-              options: {
-                messageKey: 'message',
-                colorize: true,
-                ignore: 'pid,hostname',
-                translateTime: 'SYS:standard',
-              },
-            }
-          : undefined, // En producción, usar JSON directo a stdout
+        // transport: process.env.NODE_ENV !== 'production' 
+        //   ? 
+        //   {
+        //       target: 'pino-pretty',
+        //       options: {
+        //         messageKey: 'message',
+        //         colorize: true,
+        //         ignore: 'pid,hostname',
+        //         translateTime: 'SYS:standard',
+        //       },
+        //     }
+        //   : undefined, // En producción, usar JSON directo a stdout
+
+        transport: {
+          target: 'pino-pretty',
+          options: {
+            messageKey: 'message',
+            colorize: true,
+            ignore: 'pid,hostname',
+            translateTime: 'SYS:standard',
+            // Importante: Asegurarse de que no se filtren mensajes
+            levelFirst: true,
+            // Mostrar contexto en los logs
+            singleLine: false,
+          },
+        },
         
         // Metadatos que se añadirán a todos los logs
         customProps: () => ({
@@ -61,7 +76,7 @@ import { StorageModule } from './storage/storage.module';
           err: (err) => ({
             type: err.constructor.name,
             message: err.message,
-            stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined,
+            stack: true //process.env.NODE_ENV !== 'production' ? err.stack : undefined,
           }),
         },
       },
