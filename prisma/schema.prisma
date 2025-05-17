@@ -195,6 +195,23 @@ model HorarioSede {
   @@map("horarios_sede")
 }
 
+// Mensajes de DLQ
+model DlqMessage {
+  id              String   @id @default(cuid())
+  originalQueue   String
+  errorMessage    String
+  payload         String
+  timestamp       DateTime
+  retryCount      Int
+  processed       Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([originalQueue])
+  @@index([createdAt])
+  @@map("dlq_messages")
+}
+
 // Zonas de Cobertura
 model ZonaCobertura {
   id            String    @id @default(uuid())

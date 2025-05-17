@@ -1,42 +1,22 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { MicroserviceOptions, RpcException, Transport } from '@nestjs/microservices';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { envs } from './config/envs';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
-import { finalize } from 'rxjs/operators';
-import { PinoLogger } from 'nestjs-pino';
 
-
-// Clase auxiliar para determinar tipos de errores
-class AppBootstrap {
+async function bootstrap() {
+  // Crear logger
+  const logger = new Logger('CompanyMS');
   
-  private app: any;
-  private prismaService: PrismaService;
-  private shuttingDown = false;
-  private pendingOperations = 0;
-  private logger: PinoLogger;
+  try {
+    logger.log('Iniciando microservicio de empresa');
 
-  async init() {
-    try {
-      await this.createMicroservice();
-      // Usar resolve() en lugar de get() para PinoLogger
-      this.logger = await this.app.resolve(PinoLogger);
-      // Establecer contexto
-      // this.logger.setContext('Company-MS');
-
-      
-      await this.setupMiddlewares();
-      this.setupErrorHandling();
-      await this.startApplication();
-    } catch (error) {
-      console.error('Error al iniciar el microservicio:', error);
-      process.exit(1);
-    }
-  }
-
-  private async createMicroservice() {
-    this.app = await NestFactory.createMicroservice<MicroserviceOptions>(
+    logger.log('Verificando conexión RabbitMQ...');
+    await ensureRabbitMQConnection(envs.rabbitmqServers, logger);
+    
+    // Crear la aplicación microservicio
+    const app = await NestFactory.createMicroservice<MicroserviceOptions>(
       AppModule,
       {
         transport: Transport.RMQ,
@@ -47,53 +27,22 @@ class AppBootstrap {
             durable: true,
             arguments: {
               'x-message-ttl': 300000, // 5 minutos
-              'x-expires': 600000      // 10 minutos
+              'x-expires': 600000     // 10 minutos
             }
-           },
+          },
           noAck: false,
-          prefetchCount:4
+          prefetchCount: envs.rabbitmq.prefetchCount || 4,
+          socketOptions: {
+            heartbeatIntervalInSeconds: 5, 
+            reconnectTimeInSeconds: 5
+          }
         },
-        bufferLogs: true,
-        logger: ['error', 'warn'],
-        // logger: ['error', 'warn', 'log', 'debug'], //!no mostrar log de arranque
-        
+        logger: ['error', 'warn', 'log', 'debug'], // Permitir todos los niveles de log
       }
     );
-    this.prismaService = this.app.get(PrismaService);
-  }
-
-  private async setupMiddlewares() {
-    // Configurar interceptores
-    this.setupInterceptors();
     
     // Configurar validación global
-    this.setupValidation();
-  }
-
-  private setupInterceptors() {
-    // Este interceptor solo se encarga de rastrear operaciones pendientes
-    // y no registra logs de errores
-    this.app.useGlobalInterceptors(
-      {
-        intercept: (context, next) => {
-          if (!this.shuttingDown) {
-            this.pendingOperations++;
-            return next.handle().pipe(
-              // Importante: No agregamos un manejador de error aquí
-            // para evitar logs duplicados
-              finalize(() => {
-                this.pendingOperations--;
-              })
-            );
-          }
-          return next.handle();
-        },
-      }
-    );
-  }
-
-  private setupValidation() {
-    this.app.useGlobalPipes(
+    app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
         forbidNonWhitelisted: true,
@@ -102,126 +51,88 @@ class AppBootstrap {
         },
       })
     );
-  }
 
-  private async waitForPendingOperations(maxWaitTime = 5000) {
-    const startTime = Date.now();
+    // Configurar validación global
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transformOptions: {
+          enableImplicitConversion: true,
+        },
+      })
+    );
     
-    while (this.pendingOperations > 0 && Date.now() - startTime < maxWaitTime) {
-      // this.logger.log(`Esperando ${this.pendingOperations} operaciones pendientes...`);
-      this.logger.debug({ pendingOps: this.pendingOperations }, `Esperando operaciones pendientes`);
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
+    logger.debug('Validación global configurada');
     
-    if (this.pendingOperations > 0) {
-      this.logger.warn(`Tiempo de espera agotado con ${this.pendingOperations} operaciones pendientes`);
-    }
-  }
-
-  private async gracefulShutdown(signal: string) {
-    if (this.shuttingDown) {
-      // this.logger.warn('Ya existe un proceso de apagado en curso...');
-      this.logger.warn({ pendingOps: this.pendingOperations }, `Tiempo de espera agotado con operaciones pendientes`);
-      return;
-    }
-
-    this.shuttingDown = true;
-    // this.logger.log(`${CONSOLE_COLORS.TEXT.YELLOW}Recibida señal ${signal}, iniciando apagado graceful...`);
-    this.logger.debug({ signal }, 'Iniciando apagado graceful');
-    try {
-      await this.performShutdown();
-      process.exit(0);
-    } catch (error) {
-      // this.logger.error(`${CONSOLE_COLORS.TEXT.RED}Error durante el apagado:`, error);
-      this.logger.error({ err: error }, 'Error durante el apagado');
-      process.exit(1);
-    }
-  }
-
-  private async performShutdown() {
-    this.logger.debug('Deteniendo aceptación de nuevas conexiones...');
-    await this.waitForPendingOperations();
-    await this.closeConnections();
-    this.logger.debug('Apagado graceful completado');
-  }
-
-  private async closeConnections() {
-    // Cerrar microservicio
-    await this.closeMicroservice();
-    // Cerrar conexión con base de datos
-    await this.closeDatabaseConnection();
-  }
-
-  private async closeMicroservice() {
-    try {
-      if (this.app) {
-        this.logger.debug('Cerrando el microservicio');
-        await this.app.close();
-        this.logger.debug('Microservicio cerrado correctamente');
+    // Obtener el servicio Prisma para poder cerrarlo adecuadamente
+    const prismaService = app.get(PrismaService);
+    
+    // Manejar shutdown graceful
+    const cleanup = async (signal: string) => {
+      logger.log(`Recibida señal ${signal}, iniciando apagado graceful...`);
+      
+      try {
+        // Cerrar servicio
+        await app.close();
+        logger.log('Microservicio cerrado correctamente');
+        
+        // Cerrar conexión a la base de datos
+        await prismaService.$disconnect();
+        logger.log('Conexión a base de datos cerrada correctamente');
+        
+        process.exit(0);
+      } catch (error) {
+        logger.error(`Error durante el apagado: ${error.message}`);
+        process.exit(1);
       }
-    } catch (err) {
-      this.logger.error({ err }, 'Error al cerrar el microservicio');
-    }
-  }
-
-  private async closeDatabaseConnection() {
-    try {
-      if (this.prismaService) {
-        this.logger.debug('Cerrando conexión con la base de datos');
-        await this.prismaService.$disconnect();
-        this.logger.debug('Conexión con la base de datos cerrada correctamente');
-      }
-    } catch (err) {
-      this.logger.error({ err }, 'Error al cerrar la conexión de la base de datos');
-    }
-  }
-
-  private setupErrorHandling() {
-    // Manejo de señales
+    };
+    
+    // Registrar manejadores para señales
     ['SIGTERM', 'SIGINT'].forEach(signal => {
-      process.once(signal, () => this.gracefulShutdown(signal));
+      process.once(signal, () => cleanup(signal));
     });
-
-    // Manejo de promesas no manejadas
-    process.on('unhandledRejection', this.handleUnhandledRejection.bind(this));
     
-    // Manejo de excepciones no capturadas
-    process.on('uncaughtException', this.handleUncaughtException.bind(this));
+    // Manejar excepciones y promesas no manejadas
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error(`Promesa no manejada rechazada: ${reason}`);
+    });
+    
+    process.on('uncaughtException', (error) => {
+      logger.error(`Error no capturado: ${error.message}`);
+      cleanup('uncaughtException');
+    });
+    
+    // Iniciar el microservicio
+    await app.listen();
+    logger.log(`Microservicio Company - Empresa corriendo en el puerto ${envs.port}`);
+    
+  } catch (error) {
+    logger.error(`Error al iniciar el microservicio: ${error.message}`);
+    process.exit(1);
   }
 
-  private handleUnhandledRejection(reason: any, promise: Promise<any>) {
-    this.logger.error({ 
-      reason: reason instanceof Error ? {
-        message: reason.message,
-        stack: reason.stack,
-        name: reason.name
-      } : reason,
-      type: typeof reason
-    }, 'Promesa no manejada rechazada');
-  }
-
-  private handleUncaughtException(error: Error) {
-    this.logger.error({
-      error: {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
+  async function ensureRabbitMQConnection(urls: string[], logger: Logger): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const amqp = require('amqplib');
+    
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        logger.log(`Intento ${attempt} de conexión a RabbitMQ...`);
+        await amqp.connect(urls[0]);
+        logger.log('Verificación de conexión RabbitMQ exitosa');
+        return;
+      } catch (error) {
+        logger.warn(`Error al conectar con RabbitMQ: ${error.message}`);
+        if (attempt < 5) {
+          logger.log(`Esperando 2 segundos antes del próximo intento...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } else {
+          throw new Error(`No se pudo establecer conexión con RabbitMQ después de 5 intentos`);
+        }
       }
-    }, 'Error no capturado');
-    this.gracefulShutdown('uncaughtException');
+    }
   }
-
-  private async startApplication() {
-    await this.app.listen();
-    this.logger.debug(`Microservicio Company - Empresa corriendo en el puerto ${envs.port}`);
-  }
-}
-
-// Iniciar la aplicación
-async function bootstrap() {
-  const app = new AppBootstrap();
-  await app.init();
 }
 
 bootstrap();
-

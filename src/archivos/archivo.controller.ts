@@ -5,18 +5,29 @@ import { CreateArchivoDto } from './dto/create-archivo.dto';
 import { CategoriaArchivo } from '@prisma/client';
 import { ArchivoService } from './archivo.service';
 import { PaginationDto } from 'src/common';
+import { PinoLogger } from 'nestjs-pino';
+
 
 @Controller()
 export class ArchivoController {
   private readonly logger = new Logger(ArchivoController.name);
 
-  constructor(private readonly archivoService: ArchivoService) {}
+  constructor(
+    private readonly archivoService: ArchivoService,
+  ) {}
 
-  @MessagePattern('archivo.create') //OK IMPLEMENTADO - FILESCONTROLLER GATEWAY
-  async create(@Payload() createArchivoDto: CreateArchivoDto) {
-
-    return await this.archivoService.create(createArchivoDto);    
+  @MessagePattern('archivo.create')
+async create(@Payload() createArchivoDto: CreateArchivoDto) {
+  try {
+    this.logger.log(`Recibida petición para crear archivo: ${createArchivoDto.filename}`);
+    const resultado = await this.archivoService.create(createArchivoDto);
+    this.logger.log(`Archivo creado exitosamente: ${resultado.id}`);
+    return resultado;
+  } catch (error) {
+    this.logger.error(`Error al crear archivo: ${error.message}`, error.stack);
+    throw error;
   }
+}
 
   @MessagePattern('archivo.findById') //OK IMPLEMENTADO - FILESCONTROLLER GATEWAY
   async findById(@Payload() id: string) {

@@ -41,7 +41,9 @@ export class StorageQuotaService {
 
   async checkQuota(empresaId: string, fileSize: number) {
     try {
-      console.log(empresaId)
+
+      this.logger.debug(`Verificando cuota para empresa ${empresaId} - Tamanio solicitado: ${fileSize} bytes`);
+      
       // Obtener el plan activo de la empresa
       const empresaPlan = await this.prisma.empresaPlan.findFirst({
         where: {
@@ -55,7 +57,7 @@ export class StorageQuotaService {
   
       // Si no hay plan activo, usar valores predeterminados en lugar de lanzar error
       if (!empresaPlan) {
-        this.logger.warn(`No se encontró plan activo para empresa ${empresaId}. Usando valores predeterminados.`);
+        this.logger.warn(`No se encontro plan activo para empresa ${empresaId}. Usando valores predeterminados.`);
         
         // Usar un valor predeterminado para el límite de almacenamiento
         const defaultStorageGB = 5; // 5 GB por defecto

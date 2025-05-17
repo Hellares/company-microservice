@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  company-microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: company-microservice:1.0.0
+    container_name: company-microservice
+    restart: always
+    environment:
+      # Configuración general
+      PORT: "3002"
+      NODE_ENV: "production"
+      
+      # Conexión a la base de datos PostgreSQL
+      # Usar la IP interna de Docker para PostgreSQL
+      DATABASE_URL: "postgresql://postgres:jtorres159.@172.20.0.4:5432/empresa?connect_timeout=30&pool_timeout=30&socket_timeout=30"
+      
+      # Conexión a RabbitMQ
+      # Usar la IP interna de Docker para RabbitMQ
+      RABBITMQ_SERVERS: "amqp://jtorres:jtorres159.@172.20.0.2:5672"
+      
+      # Configuración de RabbitMQ
+      RABBIT_RETRY_ATTEMPTS: "5"
+      RABBIT_RETRY_DELAY: "5000"
+      RABBIT_PREFETCH_COUNT: "4"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - microservices_network
+    # Configuración de recursos (opcional)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  microservices_network:
+    external: true
