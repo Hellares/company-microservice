@@ -45,19 +45,20 @@
 # CMD ["node", "dist/main"]
 
 # Etapa de construcción
+# Etapa de construcción
 FROM node:18-alpine AS builder
-
-# Instalar dependencias del sistema
-RUN apk add --no-cache wget
 
 WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY package*.json ./
-COPY prisma ./prisma/
 
-# Instalar dependencias
-RUN npm ci --silent
+# Limpiar cache de npm y instalar dependencias
+RUN npm cache clean --force && \
+    npm install --production=false --silent
+
+# Copiar prisma schema
+COPY prisma ./prisma/
 
 # Generar cliente Prisma
 RUN npx prisma generate
@@ -71,39 +72,27 @@ RUN npm run build
 # Etapa de producción
 FROM node:18-alpine AS production
 
-# Instalar wget para healthcheck
-RUN apk add --no-cache wget
-
 WORKDIR /app
-
-# Crear usuario no-root para seguridad
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001
 
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar solo dependencias de producción
-RUN npm ci --only=production --silent && npm cache clean --force
+# Instalar solo dependencias de producción de forma más robusta
+RUN npm cache clean --force && \
+    npm install --only=production --silent --no-audit --no-fund || \
+    npm install --only=production
 
-# Copiar artefactos desde builder
-COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
+# Copiar artefactos compilados desde builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/prisma ./prisma
 
 # Crear directorio para logs
-RUN mkdir -p logs && chown -R nestjs:nodejs logs
-
-# Cambiar a usuario no-root
-USER nestjs
+RUN mkdir -p logs && chmod -R 777 logs
 
 # Exponer puerto
 EXPOSE 3002
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3002/health || exit 1
 
 # Comando de inicio
 CMD ["node", "dist/main"]
