@@ -11,7 +11,7 @@ export class EmpresaService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy
+    @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
   ) {}
 
   private generateSlug(nombreComercial: string): string {

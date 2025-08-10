@@ -18,8 +18,8 @@ model Rubro {
   estado        Boolean   @default(true)
   orden         Int
   empresas      Empresa[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
 
   @@index([estado])
   @@index([orden])
@@ -37,8 +37,8 @@ model Plan {
   caracteristicas   Json
   limites           Json
   estado            Boolean   @default(true)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime  @default(now()) @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @db.Timestamptz
   empresasPlanes    EmpresaPlan[]
 
   @@index([estado])
@@ -59,8 +59,8 @@ model EmpresaPlan {
   montoPagado     Decimal   @db.Decimal(10,2)
   metodoPago      String?
   comprobantePago String?   // ID de la imagen en el microservicio de imágenes
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
 
   @@index([empresaId])
   @@index([estado])
@@ -83,8 +83,8 @@ model Empresa {
   planesHistorial  EmpresaPlan[]
   logoId           String?    // ID de la imagen en el microservicio de imágenes
   portadaId        String?    // ID de la imagen en el microservicio de imágenes
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @db.Timestamptz
 
   archivos      Archivo[]
 
@@ -111,8 +111,8 @@ model Sede {
   configuracion   ConfiguracionSede?
   horarios        HorarioSede[]
   zonaCobertura   ZonaCobertura[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
 
   @@index([empresaId])
   @@index([estado])
@@ -136,8 +136,8 @@ model Ubicacion {
   pais            String   @default("Perú")
   latitud         Float
   longitud        Float
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
 
   @@index([distrito, provincia, departamento])
   @@index([latitud, longitud])
@@ -154,8 +154,8 @@ model ContactoSede {
   emailPrincipal    String
   emailSecundario   String?
   whatsapp          String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now()) @db.Timestamptz
+  updatedAt         DateTime  @updatedAt @db.Timestamptz
 
   @@index([telefonoPrincipal])
   @@index([emailPrincipal])
@@ -172,8 +172,8 @@ model ConfiguracionSede {
   horaApertura    String?  // Formato HH:mm
   horaCierre      String?  // Formato HH:mm
   diasOperacion   String[] // Array de días de la semana
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
 
   @@map("configuraciones_sede")
 }
@@ -187,8 +187,8 @@ model HorarioSede {
   horaApertura  String    // Formato HH:mm
   horaCierre    String    // Formato HH:mm
   cerrado       Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
 
   @@unique([sedeId, diaSemana])
   @@index([sedeId])
@@ -204,8 +204,8 @@ model DlqMessage {
   timestamp       DateTime
   retryCount      Int
   processed       Boolean @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
 
   @@index([originalQueue])
   @@index([createdAt])
@@ -224,8 +224,8 @@ model ZonaCobertura {
   centroLongitud Float
   poligono      Json?     // Array de coordenadas para zonas no circulares
   activo        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
 
   @@index([sedeId])
   @@index([activo])
@@ -244,8 +244,8 @@ model InformacionLegal {
   domicilioFiscal       String
   representanteLegal    String
   dniRepresentante      String
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt             DateTime  @default(now()) @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @db.Timestamptz
 
   @@map("informacion_legal")
 }
@@ -317,8 +317,8 @@ model Archivo {
   orden         Int?            // Para ordenar imágenes de galería
   esPublico     Boolean         @default(true) // Si es accesible públicamente
   provider      String?         //Proveedor de almacenamiento (firebase, cloudinary, s3, local)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime  @default(now()) @db.Timestamptz
+  updatedAt     DateTime  @updatedAt @db.Timestamptz
 
   // Relaciones
   empresa       Empresa         @relation(fields: [empresaId], references: [id])

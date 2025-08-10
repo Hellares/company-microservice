@@ -4,6 +4,8 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { envs } from './config/envs';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
+import { DateFormatInterceptor } from '@jtorres/nestjs-common';
+
 
 async function bootstrap() {
   // Crear logger
@@ -52,17 +54,9 @@ async function bootstrap() {
       })
     );
 
-    // Configurar validación global
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transformOptions: {
-          enableImplicitConversion: true,
-        },
-      })
-    );
-    
+    app.useGlobalInterceptors(new DateFormatInterceptor());
+
+       
     logger.debug('Validación global configurada');
     
     // Obtener el servicio Prisma para poder cerrarlo adecuadamente
