@@ -4,7 +4,8 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { envs } from './config/envs';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
-import { DateFormatInterceptor } from '@jtorres/nestjs-common';
+import { DateFormatInterceptor } from 'jtorres-nestjs-common';
+
 
 
 async function bootstrap() {
