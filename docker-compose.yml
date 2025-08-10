@@ -19,7 +19,8 @@ services:
       
       # Conexión a RabbitMQ
       # Usar la IP interna de Docker para RabbitMQ
-      RABBITMQ_SERVERS: "amqp://jtorres:jtorres159.@172.20.0.2:5672"
+      #RABBITMQ_SERVERS: "amqp://jtorres:jtorres159.@172.20.0.2:5672" 
+      RABBITMQ_SERVERS: "	amqp://admin:admin123@rabbitmq-server:5672" 
       
       # Configuración de RabbitMQ
       RABBIT_RETRY_ATTEMPTS: "5"
