@@ -1,3 +1,60 @@
+// import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+// import { PrismaClient } from '@prisma/client';
+
+// @Injectable()
+// export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+//   private readonly logger = new Logger('PrismaService');
+
+//   constructor() {
+//     super({
+//       // log: [
+//       //   { emit: 'stdout', level: 'query' },
+//       //   { emit: 'stdout', level: 'info' },
+//       //   { emit: 'stdout', level: 'warn' },
+//       //   { emit: 'stdout', level: 'error' },
+//       // ],
+//       datasources: {
+//         db: {
+//           url: process.env.DATABASE_URL,
+//         },
+//       },
+//       errorFormat: 'pretty',
+//     });
+
+//     // Extensiones avanzadas
+//     // this.$extends({
+//     //   name: 'customLogger',
+//     //   query: {
+//     //     async $allOperations({ operation, model, args, query }) {
+//     //       const start = Date.now();
+          
+//     //       try {
+//     //         const result = await query(args);
+//     //         const duration = Date.now() - start;
+            
+//     //         this.logger.debug(`Query ${model}.${operation} completada en ${duration}ms`);
+            
+//     //         return result;
+//     //       } catch (error) {
+//     //         this.logger.error(`Error en prisma ${model}.${operation}: ${error.message}`, error.stack);
+//     //         throw error;
+//     //       }
+//     //     },
+//     //   },
+//     // });
+//   }
+
+//   async onModuleInit() {
+//     await this.$connect();
+//     this.logger.log('Conexion a base de datos establecida');
+//   }
+
+//   async onModuleDestroy() {
+//     this.logger.log('Cerrando conexión a base de datos');
+//     await this.$disconnect();
+//   }
+// }
+
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
@@ -7,12 +64,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor() {
     super({
-      // log: [
-      //   { emit: 'stdout', level: 'query' },
-      //   { emit: 'stdout', level: 'info' },
-      //   { emit: 'stdout', level: 'warn' },
-      //   { emit: 'stdout', level: 'error' },
-      // ],
       datasources: {
         db: {
           url: process.env.DATABASE_URL,
@@ -20,37 +71,62 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       },
       errorFormat: 'pretty',
     });
-
-    // Extensiones avanzadas
-    // this.$extends({
-    //   name: 'customLogger',
-    //   query: {
-    //     async $allOperations({ operation, model, args, query }) {
-    //       const start = Date.now();
-          
-    //       try {
-    //         const result = await query(args);
-    //         const duration = Date.now() - start;
-            
-    //         this.logger.debug(`Query ${model}.${operation} completada en ${duration}ms`);
-            
-    //         return result;
-    //       } catch (error) {
-    //         this.logger.error(`Error en prisma ${model}.${operation}: ${error.message}`, error.stack);
-    //         throw error;
-    //       }
-    //     },
-    //   },
-    // });
   }
 
   async onModuleInit() {
-    await this.$connect();
-    this.logger.log('Conexion a base de datos establecida');
+    try {
+      await this.$connect();
+      this.logger.log('Conexión a base de datos establecida');
+      
+      // Verificar conectividad inicial
+      await this.healthCheck();
+      
+    } catch (error) {
+      this.logger.error(`Error conectando a la base de datos: ${error.message}`);
+      throw error;
+    }
   }
 
   async onModuleDestroy() {
-    this.logger.log('Cerrando conexión a base de datos');
-    await this.$disconnect();
+    try {
+      this.logger.log('Cerrando conexión a base de datos');
+      await this.$disconnect();
+    } catch (error) {
+      this.logger.error(`Error cerrando conexión: ${error.message}`);
+    }
+  }
+
+  // Método para verificar salud de la conexión
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.$queryRaw`SELECT 1`;
+      this.logger.debug('Health check exitoso');
+      return true;
+    } catch (error) {
+      this.logger.error(`Health check falló: ${error.message}`);
+      return false;
+    }
+  }
+
+  // Wrapper para queries con logging manual
+  async safeQuery<T>(queryFn: () => Promise<T>, operationName: string): Promise<T> {
+    const startTime = Date.now();
+    
+    try {
+      const result = await queryFn();
+      const duration = Date.now() - startTime;
+      
+      if (duration > 2000) {
+        this.logger.warn(`Query lenta en ${operationName}: ${duration}ms`);
+      } else {
+        this.logger.debug(`Query ${operationName} completada en ${duration}ms`);
+      }
+      
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this.logger.error(`Error en ${operationName} (${duration}ms): ${error.message}`);
+      throw error;
+    }
   }
 }

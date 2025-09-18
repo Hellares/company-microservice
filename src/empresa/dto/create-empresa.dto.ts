@@ -41,11 +41,11 @@ export class CreateEmpresaDto {
 
   @IsOptional()
   @IsString()
-  creadorNombre?: string;
+  creadorNombres?: string;
 
   @IsOptional()
   @IsString()
-  creadorApellido?: string;
+  creadorApellidos?: string;
 
   @IsOptional()
   @IsString()

@@ -260,12 +260,12 @@ export class EmpresaService {
             creadorId: createEmpresaDto.creadorId,
             creadorDni: createEmpresaDto.creadorDni,
             creadorEmail: createEmpresaDto.creadorEmail,
-            creadorNombre: createEmpresaDto.creadorNombre,
-            creadorApellido: createEmpresaDto.creadorApellido,
+            creadorNombres: createEmpresaDto.creadorNombres,
+            creadorApellidos: createEmpresaDto.creadorApellidos,
             creadorTelefono: createEmpresaDto.creadorTelefono,
           });
         }
-
+        
         return {
           data: empresa,
           message: 'Empresa creada exitosamente',
@@ -309,8 +309,8 @@ export class EmpresaService {
         creadorId: creadorInfo.creadorId,
         creadorDni: creadorInfo.creadorDni,
         creadorEmail: creadorInfo.creadorEmail,
-        creadorNombre: creadorInfo.creadorNombre,
-        creadorApellido: creadorInfo.creadorApellido,
+        creadorNombres: creadorInfo.creadorNombres,
+        creadorApellidos: creadorInfo.creadorApellidos,
         creadorTelefono: creadorInfo.creadorTelefono,
         // Añadir un timestamp y un ID único para evitar procesar duplicados
         timestamp: Date.now(),
@@ -531,73 +531,127 @@ export class EmpresaService {
   async getEmpresasByIds(empresasIds: string[]) {
     try {
       this.logger.debug(`Buscando empresas con IDs: ${empresasIds.join(', ')}`);
-      
-      if (!empresasIds || empresasIds.length === 0) {
-        return {
-          success: true,
-          data: [],
-        };
+
+      // Unificar validación de entrada
+      const validIds = (empresasIds ?? []).filter(
+        id => id && typeof id === 'string' && id.trim() !== '',
+      );
+      if (validIds.length === 0) {
+        return { success: true, data: [] };
       }
-      
-      // Buscar las empresas en paralelo
-      const empresas = await this.prisma.empresa.findMany({
-        where: {
-          id: {
-            in: empresasIds
-          }
+
+      // Timeout dinámico basado en cantidad de IDs (máximo 8 segundos)
+      const timeout = Math.min(9000, validIds.length * 1000);
+
+      // Consulta principal con Prisma
+      const empresas = await this.prisma.safeQuery(
+        async () => {
+          return Promise.race([
+            this.prisma.empresa.findMany({
+              where: { id: { in: validIds } },
+              select: {
+                id: true,
+                nombreComercial: true,
+                razonSocial: true,
+                ruc: true,
+                estado: true,
+                verificada: true,
+                rubro: {
+                  select: { id: true, nombre: true},
+                },
+              },
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Query timeout')), timeout),
+            ),
+          ]);
         },
-        include: {
-          rubro: {
-            select: {
-              id: true,
-              nombre: true,
-              estado: true,
-            }
-          },
-          sedes: {
-            select: {
-              id: true,
-              nombre: true,
-              estado: true,
-              esPrincipal: true,
-            },
-            where: {
-              estado: 'ACTIVA',
-            },
-            take: 1
-          },
-          planesHistorial: {
-            select: {
-              id: true,
-              estado: true,
-              plan: {
-                select: {
-                  id: true,
-                  nombre: true,
-                  nivelPlan: true,
-                }
-              }
-            },
-            where: {
-              estado: 'ACTIVO',
-            },
-            take: 1
-          }
-        }
-      });
-      
+        `getEmpresasByIds[${validIds.length}]`,
+      );
+
       return {
         success: true,
         data: empresas,
       };
     } catch (error) {
-      this.logger.error(`Error al buscar empresas: ${error.message}`, error.stack);
-      
+      this.logger.error(`Error al buscar empresas: ${error.message}`);
+
+      if (error.message === 'Query timeout') {
+        return await this.getEmpresasByIdsInBatches(empresasIds);
+      }
+
       throw new RpcException({
         message: `Error al buscar múltiples empresas: ${error.message}`,
         status: 500,
-        code: 'EMPRESAS_SEARCH_ERROR'
+        code: 'EMPRESAS_SEARCH_ERROR',
       });
     }
   }
+
+  private async getEmpresasByIdsInBatches(empresasIds: string[], batchSize = 10) {
+    this.logger.debug(`Ejecutando consulta por lotes de ${batchSize} empresas`);
+
+    // Validar y filtrar IDs
+    const validIds = (empresasIds ?? []).filter(
+      id => id && typeof id === 'string' && id.trim() !== '',
+    );
+    if (validIds.length === 0) {
+      return { success: true, data: [], isFallback: true };
+    }
+
+    // Ajustar tamaño de lote dinámicamente
+    const adjustedBatchSize = Math.min(batchSize, Math.ceil(validIds.length / 5));
+    const allResults = [];
+    const failedIds = [];
+
+    // Procesar lotes en paralelo
+    const batches = [];
+    for (let i = 0; i < validIds.length; i += adjustedBatchSize) {
+      batches.push(validIds.slice(i, i + adjustedBatchSize));
+    }
+
+    const batchPromises = batches.map(async (batch, index) => {
+      try {
+        const batchResults = await this.prisma.empresa.findMany({
+          where: { id: { in: batch } },
+          select: {
+            id: true,
+            nombreComercial: true,
+            razonSocial: true,
+            ruc: true,
+            estado: true,
+            verificada: true,
+            rubro: {
+              select: { id: true, nombre: true },
+            },
+          },
+        });
+        return batchResults;
+      } catch (batchError) {
+        this.logger.error(`Error en lote ${index * adjustedBatchSize}-${(index + 1) * adjustedBatchSize}: ${batchError.message}`);
+        failedIds.push(...batch);
+        return [];
+      }
+    });
+
+    // Ejecutar lotes en paralelo
+    const results = await Promise.all(batchPromises);
+
+    // Aplanar resultados
+    allResults.push(...results.flat());
+
+    // Pausa dinámica entre lotes (si aplica)
+    const delay = adjustedBatchSize > 5 ? 100 : 50;
+    if (batches.length > 1) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    return {
+      success: true,
+      data: allResults,
+      isFallback: true,
+      failedIds: failedIds.length > 0 ? failedIds : undefined,
+    };
+  }
+
 }
