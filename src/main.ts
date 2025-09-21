@@ -65,23 +65,29 @@ async function bootstrap() {
     
     // Manejar shutdown graceful
     const cleanup = async (signal: string) => {
-      logger.log(`Recibida señal ${signal}, iniciando apagado graceful...`);
-      
-      try {
-        // Cerrar servicio
-        await app.close();
-        logger.log('Microservicio cerrado correctamente');
-        
-        // Cerrar conexión a la base de datos
-        await prismaService.$disconnect();
-        logger.log('Conexión a base de datos cerrada correctamente');
-        
-        process.exit(0);
-      } catch (error) {
-        logger.error(`Error durante el apagado: ${error.message}`);
-        process.exit(1);
-      }
-    };
+  logger.log(`Recibida señal ${signal}, iniciando apagado graceful...`);
+  
+  // ✅ AGREGAR TIMEOUT DE SEGURIDAD
+  const forceExitTimeout = setTimeout(() => {
+    logger.error('Timeout en shutdown, forzando salida...');
+    process.exit(1);
+  }, 10000); // 10 segundos máximo
+  
+  try {
+    await prismaService.$disconnect();
+    logger.log('Conexión a base de datos cerrada');
+    
+    await app.close();
+    logger.log('Microservicio cerrado correctamente');
+    
+    clearTimeout(forceExitTimeout);
+    process.exit(0);
+  } catch (error) {
+    logger.error(`Error durante el apagado: ${error.message}`);
+    clearTimeout(forceExitTimeout);
+    process.exit(1);
+  }
+};
     
     // Registrar manejadores para señales
     ['SIGTERM', 'SIGINT'].forEach(signal => {

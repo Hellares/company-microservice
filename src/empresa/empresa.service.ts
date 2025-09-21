@@ -272,8 +272,9 @@ export class EmpresaService {
           timestamp: new Date().toISOString()
         };
       }, {
-        maxWait: 5000,
-        timeout: 10000,
+        maxWait: 20000,
+        timeout: 45000,
+        isolationLevel: 'ReadCommitted', // ✅ Reducir bloqueos
       });
 
       this.logger.log(`Proceso de creación de empresa completado exitosamente: ${result.data.id}`);
@@ -316,7 +317,8 @@ export class EmpresaService {
         timestamp: Date.now(),
       };
 
-      this.logger.debug(`Emitiendo evento con datos: ${JSON.stringify(eventData)}`);
+      // this.logger.debug(`Emitiendo evento con datos: ${JSON.stringify(eventData)}`);
+      console.log('🔍 Enviando evento empresa.created:', JSON.stringify(eventData, null, 2));
     
      this.authClient.emit('empresa.created', eventData);
       
@@ -555,7 +557,7 @@ export class EmpresaService {
                 razonSocial: true,
                 ruc: true,
                 estado: true,
-                verificada: true,
+                // verificada: true,
                 rubro: {
                   select: { id: true, nombre: true},
                 },

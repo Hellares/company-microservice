@@ -1,60 +1,3 @@
-// import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-// import { PrismaClient } from '@prisma/client';
-
-// @Injectable()
-// export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
-//   private readonly logger = new Logger('PrismaService');
-
-//   constructor() {
-//     super({
-//       // log: [
-//       //   { emit: 'stdout', level: 'query' },
-//       //   { emit: 'stdout', level: 'info' },
-//       //   { emit: 'stdout', level: 'warn' },
-//       //   { emit: 'stdout', level: 'error' },
-//       // ],
-//       datasources: {
-//         db: {
-//           url: process.env.DATABASE_URL,
-//         },
-//       },
-//       errorFormat: 'pretty',
-//     });
-
-//     // Extensiones avanzadas
-//     // this.$extends({
-//     //   name: 'customLogger',
-//     //   query: {
-//     //     async $allOperations({ operation, model, args, query }) {
-//     //       const start = Date.now();
-          
-//     //       try {
-//     //         const result = await query(args);
-//     //         const duration = Date.now() - start;
-            
-//     //         this.logger.debug(`Query ${model}.${operation} completada en ${duration}ms`);
-            
-//     //         return result;
-//     //       } catch (error) {
-//     //         this.logger.error(`Error en prisma ${model}.${operation}: ${error.message}`, error.stack);
-//     //         throw error;
-//     //       }
-//     //     },
-//     //   },
-//     // });
-//   }
-
-//   async onModuleInit() {
-//     await this.$connect();
-//     this.logger.log('Conexion a base de datos establecida');
-//   }
-
-//   async onModuleDestroy() {
-//     this.logger.log('Cerrando conexión a base de datos');
-//     await this.$disconnect();
-//   }
-// }
-
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 
@@ -70,6 +13,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         },
       },
       errorFormat: 'pretty',
+      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     });
   }
 
@@ -78,8 +22,18 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       await this.$connect();
       this.logger.log('Conexión a base de datos establecida');
       
+      
       // Verificar conectividad inicial
       await this.healthCheck();
+
+      setInterval(async () => {
+    try {
+      await this.$queryRaw`SELECT 1`;
+      this.logger.debug('🔍 Pool health check: OK');
+    } catch (error) {
+      this.logger.error(`❌ Pool health check failed: ${error.message}`);
+    }
+  }, 120000);
       
     } catch (error) {
       this.logger.error(`Error conectando a la base de datos: ${error.message}`);
@@ -87,14 +41,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
   }
 
-  async onModuleDestroy() {
-    try {
-      this.logger.log('Cerrando conexión a base de datos');
-      await this.$disconnect();
-    } catch (error) {
-      this.logger.error(`Error cerrando conexión: ${error.message}`);
-    }
+ async onModuleDestroy() {
+  try {
+    this.logger.log('Cerrando conexiones de Prisma...');
+    await this.$disconnect();
+    this.logger.log('Prisma disconnect completado');
+  } catch (error) {
+    this.logger.error(`Error cerrando conexión: ${error.message}`);
   }
+}
 
   // Método para verificar salud de la conexión
   async healthCheck(): Promise<boolean> {

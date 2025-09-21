@@ -15,7 +15,8 @@ services:
       
       # Conexión a la base de datos PostgreSQL
       # Usar la IP interna de Docker para PostgreSQL
-      DATABASE_URL: "postgresql://postgres:jtorres159.@postgres:5432/empresa?connect_timeout=30&pool_timeout=30&socket_timeout=30"
+      # DATABASE_URL: "postgresql://postgres:jtorres159.@postgres:5432/empresa?connect_timeout=30&pool_timeout=30&socket_timeout=30"
+      DATABASE_URL: "postgresql://postgres:jtorres159.@postgres:5432/empresa?connection_limit=50&pool_timeout=20&connect_timeout=60&statement_timeout=30000"
       
       # Conexión a RabbitMQ
       # Usar la IP interna de Docker para RabbitMQ
